@@ -11,6 +11,12 @@
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>appIcon.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Window icon (top-left of the window); bundled into the assembly -->
+    <Resource Include="appIcon.png" />
+  </ItemGroup>
 
 </Project>
