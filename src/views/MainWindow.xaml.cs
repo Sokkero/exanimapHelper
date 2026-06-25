@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     private readonly MemoryReader _reader = new();
     private readonly TrailModel _trail = new();
     private readonly PollingService _polling;
+    private readonly GraphRenderer _renderer;
 
     public MainWindow()
     {
@@ -25,6 +26,8 @@ public partial class MainWindow : Window
         _polling = new PollingService(_reader);
         _polling.ValueRead += OnValueRead;
         _polling.ReadFailed += OnReadFailed;
+
+        _renderer = new GraphRenderer(GraphCanvas);
 
         DataList.ItemsSource = _trail.Points;
     }
@@ -106,6 +109,7 @@ public partial class MainWindow : Window
 
         _trail.Add(x, y);
         DataList.ScrollIntoView(_trail.Points[^1]);
+        _renderer.Render(_trail.Points);
 
         // Case 3 (detectable subset) — flag obviously-broken values, keep recording.
         if (IsSuspicious(x) || IsSuspicious(y))
@@ -122,7 +126,7 @@ public partial class MainWindow : Window
     }
 
     private static bool IsSuspicious(float value) =>
-        float.IsNaN(value) || float.IsInfinity(value) || Math.Abs(value) > SuspiciousMagnitude;
+        !TrailPoint.IsFinite(value) || Math.Abs(value) > SuspiciousMagnitude;
 
     private void SetInputsEnabled(bool enabled)
     {
