@@ -39,6 +39,8 @@ public partial class MainWindow : Window
         _hotkey = new HotkeyService(this, HotkeyVirtualKey);
         _hotkey.Pressed += ToggleRecording;
 
+        XAddressBox.Text = _settings.XAddress;
+        YAddressBox.Text = _settings.YAddress;
         IntervalBox.Text = _settings.IntervalMs.ToString(CultureInfo.InvariantCulture);
         DataList.ItemsSource = _trail.Points;
     }
@@ -48,17 +50,19 @@ public partial class MainWindow : Window
         base.OnSourceInitialized(e);
         if (!_hotkey.Register())
             SetStatus("Could not register the F8 hotkey (another app may be using it).", WarnBrush);
+        else
+            RefreshLivePreview(); // resume the live readout for any restored addresses
     }
 
     protected override void OnClosed(EventArgs e)
     {
-        // Persist only the interval, if it is currently a valid value.
+        // Persist the addresses as entered, plus the interval if it is valid.
+        _settings.XAddress = XAddressBox.Text;
+        _settings.YAddress = YAddressBox.Text;
         if (int.TryParse(IntervalBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture,
                 out int intervalMs) && intervalMs > 0)
-        {
             _settings.IntervalMs = intervalMs;
-            SettingsService.Save(_settings);
-        }
+        SettingsService.Save(_settings);
 
         _hotkey.Dispose();
         _polling.Stop();

@@ -3,9 +3,11 @@ using System.Text.Json;
 
 namespace ExanimapHelper;
 
-/// <summary>User settings persisted between launches. Only the poll interval is kept.</summary>
+/// <summary>User settings persisted between launches: the addresses and poll interval.</summary>
 public sealed class AppSettings
 {
+    public string XAddress { get; set; } = "";
+    public string YAddress { get; set; } = "";
     public int IntervalMs { get; set; } = 500;
 }
 
