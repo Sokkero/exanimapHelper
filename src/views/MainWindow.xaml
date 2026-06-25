@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="ExanimapHelper" Height="640" Width="1024"
         MinHeight="480" MinWidth="800"
+        Background="{StaticResource WindowBg}"
         Icon="/assets/appIcon.png">
 
     <Grid Margin="10">
@@ -19,7 +20,7 @@
                 <Button x:Name="StartStopButton" Content="Start (F8)" Height="32"
                         Click="StartStopButton_Click" />
                 <TextBlock x:Name="StatusText" Margin="0,6,0,0" TextWrapping="Wrap"
-                           Foreground="#FF555555" />
+                           Foreground="{StaticResource MutedFg}" />
                 <Button x:Name="ClearButton" Content="Clear" Height="28"
                         Margin="0,8,0,0" IsEnabled="False" Click="ClearButton_Click" />
                 <Grid Margin="0,8,0,0">
@@ -51,8 +52,8 @@
                          Padding="4,3" LostFocus="Input_LostFocus" />
 
                 <!-- Live readout: current values being read, to verify the address -->
-                <Border BorderBrush="#FFAAAAAA" BorderThickness="1" Padding="6"
-                        Margin="0,0,0,10" Background="#FFF7F7F7">
+                <Border BorderBrush="{StaticResource BorderBrushColor}" BorderThickness="1" Padding="6"
+                        Margin="0,0,0,10" Background="{StaticResource SurfaceBg}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
@@ -75,7 +76,7 @@
             </StackPanel>
 
             <!-- Fill: scrollable data list -->
-            <Border BorderBrush="#FFAAAAAA" BorderThickness="1">
+            <Border BorderBrush="{StaticResource BorderBrushColor}" BorderThickness="1">
                 <ListBox x:Name="DataList" BorderThickness="0"
                          FontFamily="Consolas"
                          ScrollViewer.VerticalScrollBarVisibility="Auto" />
@@ -83,8 +84,8 @@
         </DockPanel>
 
         <!-- Right panel: graph canvas -->
-        <Border Grid.Column="1" BorderBrush="#FF555555" BorderThickness="1">
-            <Canvas x:Name="GraphCanvas" Background="White" ClipToBounds="True" />
+        <Border Grid.Column="1" BorderBrush="{StaticResource BorderBrushColor}" BorderThickness="1">
+            <Canvas x:Name="GraphCanvas" Background="#FF1E1E1E" ClipToBounds="True" />
         </Border>
     </Grid>
 </Window>
