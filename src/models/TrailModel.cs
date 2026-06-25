@@ -34,5 +34,17 @@ public sealed class TrailModel
         return true;
     }
 
+    /// <summary>
+    /// Replaces the current trail with <paramref name="points"/> verbatim. Unlike
+    /// <see cref="Add"/> this applies no distance filtering — imported data is taken
+    /// as-is so it round-trips exactly with what was exported.
+    /// </summary>
+    public void Load(IEnumerable<TrailPoint> points)
+    {
+        Points.Clear();
+        foreach (TrailPoint p in points)
+            Points.Add(p);
+    }
+
     public void Clear() => Points.Clear();
 }

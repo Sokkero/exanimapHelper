@@ -281,6 +281,38 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ImportTextButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isRecording)
+        {
+            SetStatus("Stop recording before importing.", WarnBrush);
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Text file (*.txt)|*.txt|All files (*.*)|*.*",
+            DefaultExt = ".txt",
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        try
+        {
+            List<TrailPoint> points = ExportService.ImportText(dialog.FileName);
+            _trail.Load(points);
+            _renderer.Render(_trail.Points);
+            SetDataActionsEnabled(_trail.Count > 0);
+            if (_trail.Count > 0)
+                DataList.ScrollIntoView(_trail.Points[^1]);
+            SetStatus($"Imported {_trail.Count} points from {dialog.FileName}", InfoBrush);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Import failed: {ex.Message}", ErrorBrush);
+        }
+    }
+
     private static bool IsSuspicious(float value) =>
         !TrailPoint.IsFinite(value) || Math.Abs(value) > SuspiciousMagnitude;
 

@@ -31,6 +31,35 @@ public static class ExportService
     }
 
     /// <summary>
+    /// Reads back a file written by <see cref="ExportText"/>: one "x, y" per line.
+    /// Blank lines are skipped. A line that does not hold two finite numbers aborts
+    /// the import with the offending line number, so a half-parsed trail is never loaded.
+    /// </summary>
+    public static List<TrailPoint> ImportText(string path)
+    {
+        var points = new List<TrailPoint>();
+        string[] lines = File.ReadAllLines(path);
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string line = lines[i].Trim();
+            if (line.Length == 0)
+                continue;
+
+            string[] parts = line.Split(',');
+            if (parts.Length != 2
+                || !float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float x)
+                || !float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float y)
+                || !TrailPoint.IsFinite(x) || !TrailPoint.IsFinite(y))
+            {
+                throw new FormatException($"Line {i + 1} is not a valid \"x, y\" pair: \"{lines[i]}\"");
+            }
+
+            points.Add(new TrailPoint(x, y));
+        }
+        return points;
+    }
+
+    /// <summary>
     /// Renders the given canvas to a PNG file at its current on-screen size.
     /// The canvas background is dropped during render so only the trail lines and
     /// points are written, leaving everything else transparent.
