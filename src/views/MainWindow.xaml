@@ -14,9 +14,12 @@
         <!-- Left panel: inputs, data list, controls -->
         <DockPanel Grid.Column="0" Margin="0,0,10,0">
 
-            <!-- Bottom: Start/Stop + export buttons -->
+            <!-- Bottom: Start/Stop + export buttons + status -->
             <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
-                <Button x:Name="StartStopButton" Content="Start" Height="32" />
+                <Button x:Name="StartStopButton" Content="Start" Height="32"
+                        Click="StartStopButton_Click" />
+                <TextBlock x:Name="StatusText" Margin="0,6,0,0" TextWrapping="Wrap"
+                           Foreground="#FF555555" />
                 <Grid Margin="0,8,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -44,6 +47,27 @@
                 <TextBlock Text="Poll interval (ms):" />
                 <TextBox x:Name="IntervalBox" Text="1000" Margin="0,2,0,10"
                          Padding="4,3" />
+
+                <!-- Live readout: current values being read, to verify the address -->
+                <Border BorderBrush="#FFAAAAAA" BorderThickness="1" Padding="6"
+                        Margin="0,0,0,10" Background="#FFF7F7F7">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Live X: " />
+                        <TextBlock Grid.Row="0" Grid.Column="1" x:Name="LiveXValue"
+                                   Text="—" FontFamily="Consolas" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Live Y: " />
+                        <TextBlock Grid.Row="1" Grid.Column="1" x:Name="LiveYValue"
+                                   Text="—" FontFamily="Consolas" />
+                    </Grid>
+                </Border>
 
                 <TextBlock Text="Data:" Margin="0,0,0,2" />
             </StackPanel>
