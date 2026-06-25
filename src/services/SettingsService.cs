@@ -6,7 +6,7 @@ namespace ExanimapHelper;
 /// <summary>User settings persisted between launches. Only the poll interval is kept.</summary>
 public sealed class AppSettings
 {
-    public int IntervalMs { get; set; } = 1000;
+    public int IntervalMs { get; set; } = 500;
 }
 
 /// <summary>

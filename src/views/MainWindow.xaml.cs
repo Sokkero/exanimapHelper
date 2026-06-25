@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private readonly GraphRenderer _renderer;
     private readonly HotkeyService _hotkey;
     private readonly AppSettings _settings = SettingsService.Load();
+    private bool _isRecording;
 
     public MainWindow()
     {
@@ -69,76 +70,123 @@ public partial class MainWindow : Window
 
     private void ToggleRecording()
     {
-        if (_polling.IsRunning)
-            StopRecording("Recording stopped.", InfoBrush);
+        if (_isRecording)
+            StopRecording();
         else
             StartRecording();
+    }
+
+    private void Input_LostFocus(object sender, RoutedEventArgs e) => RefreshLivePreview();
+
+    // Starts/refreshes the live readout when an address or the interval changes.
+    // The poll loop runs continuously so Live X/Y stay current without recording.
+    private void RefreshLivePreview()
+    {
+        if (_isRecording)
+            return; // inputs are locked while recording
+
+        // Stay quiet until both addresses have been entered.
+        if (string.IsNullOrWhiteSpace(XAddressBox.Text) || string.IsNullOrWhiteSpace(YAddressBox.Text))
+        {
+            StopLivePreview();
+            return;
+        }
+
+        if (!TryStartPolling(out string error))
+        {
+            StopLivePreview();
+            SetStatus(error, ErrorBrush);
+        }
+    }
+
+    private void StopLivePreview()
+    {
+        _polling.Stop();
+        LiveXValue.Text = "—";
+        LiveYValue.Text = "—";
     }
 
     private void ClearButton_Click(object sender, RoutedEventArgs e)
     {
         _trail.Clear();
         _renderer.Render(_trail.Points);
-        LiveXValue.Text = "—";
-        LiveYValue.Text = "—";
         SetDataActionsEnabled(false);
-        SetStatus(_polling.IsRunning ? "Cleared — still recording." : "Cleared.", InfoBrush);
+        SetStatus(_isRecording ? "Cleared — still recording." : "Cleared.", InfoBrush);
     }
 
     private void StartRecording()
     {
+        if (!TryStartPolling(out string error))
+        {
+            SetStatus(error, ErrorBrush);
+            return;
+        }
+
+        _isRecording = true;
+        SetInputsEnabled(false);
+        StartStopButton.Content = "Stop (F8)";
+        SetStatus("Recording…", InfoBrush);
+    }
+
+    private void StopRecording()
+    {
+        _isRecording = false;
+        SetInputsEnabled(true);
+        StartStopButton.Content = "Start (F8)";
+        // Leave the poll loop running so the live readout keeps updating.
+        SetStatus("Recording stopped.", InfoBrush);
+    }
+
+    // Validates the inputs, attaches to Exanima if needed, and (re)starts the poll
+    // loop with an immediate read. Returns false with a reason on any failure.
+    private bool TryStartPolling(out string error)
+    {
+        error = "";
+
         // Case 1 — validate input before touching memory.
         if (!MemoryReader.TryParseAddress(XAddressBox.Text, out long xAddress))
         {
-            SetStatus("X address is not a valid hex value.", ErrorBrush);
-            return;
+            error = "X address is not a valid hex value.";
+            return false;
         }
         if (!MemoryReader.TryParseAddress(YAddressBox.Text, out long yAddress))
         {
-            SetStatus("Y address is not a valid hex value.", ErrorBrush);
-            return;
+            error = "Y address is not a valid hex value.";
+            return false;
         }
         if (!int.TryParse(IntervalBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture,
                 out int intervalMs) || intervalMs <= 0)
         {
-            SetStatus("Poll interval must be a positive whole number of milliseconds.", ErrorBrush);
-            return;
+            error = "Poll interval must be a positive whole number of milliseconds.";
+            return false;
         }
 
-        // Attach to Exanima.
-        AttachStatus status = _reader.Attach();
-        if (status != AttachStatus.Attached)
+        if (!_reader.IsAttached)
         {
-            SetStatus(status switch
+            AttachStatus status = _reader.Attach();
+            if (status != AttachStatus.Attached)
             {
-                AttachStatus.ProcessNotFound => "Exanima is not running.",
-                AttachStatus.AccessDenied => "Could not open Exanima — try running this app as administrator.",
-                _ => "Could not attach to Exanima.",
-            }, ErrorBrush);
-            return;
+                error = status switch
+                {
+                    AttachStatus.ProcessNotFound => "Exanima is not running.",
+                    AttachStatus.AccessDenied => "Could not open Exanima — try running this app as administrator.",
+                    _ => "Could not attach to Exanima.",
+                };
+                return false;
+            }
         }
 
-        // Case 2 — test-read both addresses before committing to a recording.
+        // Case 2 — test-read both addresses before committing; drop a stale handle
+        // so a later attempt can re-attach.
         if (!_reader.TryReadFloat(xAddress, out _) || !_reader.TryReadFloat(yAddress, out _))
         {
             _reader.Detach();
-            SetStatus("Could not read one of the addresses. Check they are correct.", ErrorBrush);
-            return;
+            error = "Could not read one of the addresses. Check they are correct.";
+            return false;
         }
 
-        SetInputsEnabled(false);
-        StartStopButton.Content = "Stop (F8)";
         _polling.Start(xAddress, yAddress, intervalMs);
-        SetStatus($"Recording every {intervalMs} ms…", InfoBrush);
-    }
-
-    private void StopRecording(string message, Brush brush)
-    {
-        _polling.Stop();
-        _reader.Detach();
-        SetInputsEnabled(true);
-        StartStopButton.Content = "Start (F8)";
-        SetStatus(message, brush);
+        return true;
     }
 
     private void OnValueRead(float x, float y)
@@ -146,25 +194,47 @@ public partial class MainWindow : Window
         LiveXValue.Text = TrailPoint.Format(x);
         LiveYValue.Text = TrailPoint.Format(y);
 
-        if (_trail.Count == 0)
-            SetDataActionsEnabled(true);
+        // Case 3 (detectable subset) — flag obviously-broken values.
+        bool suspicious = IsSuspicious(x) || IsSuspicious(y);
 
-        _trail.Add(x, y);
-        DataList.ScrollIntoView(_trail.Points[^1]);
-        _renderer.Render(_trail.Points);
+        if (!_isRecording)
+        {
+            SetStatus(suspicious
+                ? "Live preview — ⚠ value looks invalid, check the address."
+                : "Live preview running.", suspicious ? WarnBrush : InfoBrush);
+            return;
+        }
 
-        // Case 3 (detectable subset) — flag obviously-broken values, keep recording.
-        if (IsSuspicious(x) || IsSuspicious(y))
-            SetStatus($"Recording… {_trail.Count} points — ⚠ value looks invalid, check the address.", WarnBrush);
-        else
-            SetStatus($"Recording… {_trail.Count} points", InfoBrush);
+        // Only points far enough from the last one are recorded.
+        if (_trail.Add(x, y))
+        {
+            if (_trail.Count == 1)
+                SetDataActionsEnabled(true);
+            DataList.ScrollIntoView(_trail.Points[^1]);
+            _renderer.Render(_trail.Points);
+        }
+
+        SetStatus(suspicious
+            ? $"Recording… {_trail.Count} points — ⚠ value looks invalid, check the address."
+            : $"Recording… {_trail.Count} points", suspicious ? WarnBrush : InfoBrush);
     }
 
     private void OnReadFailed(string message)
     {
-        // The loop already stopped itself; StopRecording resets the rest of the UI
-        // (the extra _polling.Stop() is a harmless no-op on a stopped timer).
-        StopRecording(message, ErrorBrush);
+        // The loop already stopped itself; tear down the rest (attach + UI).
+        _polling.Stop();
+        _reader.Detach();
+        LiveXValue.Text = "—";
+        LiveYValue.Text = "—";
+
+        if (_isRecording)
+        {
+            _isRecording = false;
+            SetInputsEnabled(true);
+            StartStopButton.Content = "Start (F8)";
+        }
+
+        SetStatus(message, ErrorBrush);
     }
 
     private void ExportTextButton_Click(object sender, RoutedEventArgs e)

@@ -3,9 +3,6 @@ using System.Windows.Threading;
 namespace ExanimapHelper;
 
 /// <summary>
-/// Drives the recording loop: on a fixed interval it reads the X and Y addresses
-/// from the attached process and reports each sample. A failed read stops the loop
-/// and reports the failure rather than emitting bad data (PROJECT.md error case 2).
 /// </summary>
 public sealed class PollingService
 {
@@ -28,17 +25,22 @@ public sealed class PollingService
     /// <summary>Raised when a read fails; the loop has already been stopped.</summary>
     public event Action<string>? ReadFailed;
 
+    /// <summary>Starts (or restarts) the loop, reading once immediately and then
+    /// on every interval tick.</summary>
     public void Start(long xAddress, long yAddress, int intervalMs)
     {
         _xAddress = xAddress;
         _yAddress = yAddress;
         _timer.Interval = TimeSpan.FromMilliseconds(intervalMs);
         _timer.Start();
+        ReadOnce();
     }
 
     public void Stop() => _timer.Stop();
 
-    private void OnTick(object? sender, EventArgs e)
+    private void OnTick(object? sender, EventArgs e) => ReadOnce();
+
+    private void ReadOnce()
     {
         if (!_reader.TryReadFloat(_xAddress, out float x) ||
             !_reader.TryReadFloat(_yAddress, out float y))

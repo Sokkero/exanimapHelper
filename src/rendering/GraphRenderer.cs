@@ -7,9 +7,9 @@ namespace ExanimapHelper;
 
 /// <summary>
 /// Renders recorded trail points onto a <see cref="Canvas"/>: auto-fits all points
-/// with padding, flips the Y axis (world-up → screen-down), and connects
-/// consecutive points with a polyline. Uses a single uniform scale so the path
-/// keeps its true shape. Non-finite points (NaN/Infinity) are skipped.
+/// with padding, rotates the trail 180° to match the in-game map orientation, and
+/// connects consecutive points with a polyline. Uses a single uniform scale so the
+/// path keeps its true shape. Non-finite points (NaN/Infinity) are skipped.
 /// </summary>
 public sealed class GraphRenderer
 {
@@ -79,8 +79,10 @@ public sealed class GraphRenderer
         var screen = new PointCollection(finite.Count);
         foreach (TrailPoint p in finite)
         {
-            double sx = offsetX + (p.X - minX) * scale;
-            double sy = h - offsetY - (p.Y - minY) * scale; // Y-flip
+            // Both axes are inverted so the whole trail is rotated 180° to match
+            // Exanima's in-game map orientation.
+            double sx = offsetX + (maxX - p.X) * scale;
+            double sy = h - offsetY - (maxY - p.Y) * scale;
             screen.Add(new Point(sx, sy));
         }
 

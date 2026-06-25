@@ -40,15 +40,15 @@
             <StackPanel DockPanel.Dock="Top">
                 <TextBlock Text="X-Axis memory address:" />
                 <TextBox x:Name="XAddressBox" Margin="0,2,0,10" Padding="4,3"
-                         FontFamily="Consolas" />
+                         FontFamily="Consolas" LostFocus="Input_LostFocus" />
 
                 <TextBlock Text="Y-Axis memory address:" />
                 <TextBox x:Name="YAddressBox" Margin="0,2,0,10" Padding="4,3"
-                         FontFamily="Consolas" />
+                         FontFamily="Consolas" LostFocus="Input_LostFocus" />
 
                 <TextBlock Text="Poll interval (ms):" />
-                <TextBox x:Name="IntervalBox" Text="1000" Margin="0,2,0,10"
-                         Padding="4,3" />
+                <TextBox x:Name="IntervalBox" Text="500" Margin="0,2,0,10"
+                         Padding="4,3" LostFocus="Input_LostFocus" />
 
                 <!-- Live readout: current values being read, to verify the address -->
                 <Border BorderBrush="#FFAAAAAA" BorderThickness="1" Padding="6"
