@@ -16,10 +16,12 @@
 
             <!-- Bottom: Start/Stop + export buttons + status -->
             <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
-                <Button x:Name="StartStopButton" Content="Start" Height="32"
+                <Button x:Name="StartStopButton" Content="Start (F8)" Height="32"
                         Click="StartStopButton_Click" />
                 <TextBlock x:Name="StatusText" Margin="0,6,0,0" TextWrapping="Wrap"
                            Foreground="#FF555555" />
+                <Button x:Name="ClearButton" Content="Clear" Height="28"
+                        Margin="0,8,0,0" IsEnabled="False" Click="ClearButton_Click" />
                 <Grid Margin="0,8,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />

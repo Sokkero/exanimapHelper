@@ -11,6 +11,9 @@ public partial class MainWindow : Window
     // address). Heuristic only — Exanima's real coordinate scale is unconfirmed.
     private const float SuspiciousMagnitude = 1e7f;
 
+    // Global hotkey that toggles recording. VK_F8 = 0x77 — change here to rebind.
+    private const uint HotkeyVirtualKey = 0x77;
+
     private static readonly Brush ErrorBrush = Brushes.Firebrick;
     private static readonly Brush WarnBrush = Brushes.DarkOrange;
     private static readonly Brush InfoBrush = new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55));
@@ -19,6 +22,8 @@ public partial class MainWindow : Window
     private readonly TrailModel _trail = new();
     private readonly PollingService _polling;
     private readonly GraphRenderer _renderer;
+    private readonly HotkeyService _hotkey;
+    private readonly AppSettings _settings = SettingsService.Load();
 
     public MainWindow()
     {
@@ -30,15 +35,54 @@ public partial class MainWindow : Window
 
         _renderer = new GraphRenderer(GraphCanvas);
 
+        _hotkey = new HotkeyService(this, HotkeyVirtualKey);
+        _hotkey.Pressed += ToggleRecording;
+
+        IntervalBox.Text = _settings.IntervalMs.ToString(CultureInfo.InvariantCulture);
         DataList.ItemsSource = _trail.Points;
     }
 
-    private void StartStopButton_Click(object sender, RoutedEventArgs e)
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        if (!_hotkey.Register())
+            SetStatus("Could not register the F8 hotkey (another app may be using it).", WarnBrush);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        // Persist only the interval, if it is currently a valid value.
+        if (int.TryParse(IntervalBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture,
+                out int intervalMs) && intervalMs > 0)
+        {
+            _settings.IntervalMs = intervalMs;
+            SettingsService.Save(_settings);
+        }
+
+        _hotkey.Dispose();
+        _polling.Stop();
+        _reader.Dispose();
+        base.OnClosed(e);
+    }
+
+    private void StartStopButton_Click(object sender, RoutedEventArgs e) => ToggleRecording();
+
+    private void ToggleRecording()
     {
         if (_polling.IsRunning)
             StopRecording("Recording stopped.", InfoBrush);
         else
             StartRecording();
+    }
+
+    private void ClearButton_Click(object sender, RoutedEventArgs e)
+    {
+        _trail.Clear();
+        _renderer.Render(_trail.Points);
+        LiveXValue.Text = "—";
+        LiveYValue.Text = "—";
+        SetDataActionsEnabled(false);
+        SetStatus(_polling.IsRunning ? "Cleared — still recording." : "Cleared.", InfoBrush);
     }
 
     private void StartRecording()
@@ -83,7 +127,7 @@ public partial class MainWindow : Window
         }
 
         SetInputsEnabled(false);
-        StartStopButton.Content = "Stop";
+        StartStopButton.Content = "Stop (F8)";
         _polling.Start(xAddress, yAddress, intervalMs);
         SetStatus($"Recording every {intervalMs} ms…", InfoBrush);
     }
@@ -93,7 +137,7 @@ public partial class MainWindow : Window
         _polling.Stop();
         _reader.Detach();
         SetInputsEnabled(true);
-        StartStopButton.Content = "Start";
+        StartStopButton.Content = "Start (F8)";
         SetStatus(message, brush);
     }
 
@@ -103,10 +147,7 @@ public partial class MainWindow : Window
         LiveYValue.Text = TrailPoint.Format(y);
 
         if (_trail.Count == 0)
-        {
-            ExportTextButton.IsEnabled = true;
-            ExportPngButton.IsEnabled = true;
-        }
+            SetDataActionsEnabled(true);
 
         _trail.Add(x, y);
         DataList.ScrollIntoView(_trail.Points[^1]);
@@ -178,6 +219,14 @@ public partial class MainWindow : Window
         XAddressBox.IsEnabled = enabled;
         YAddressBox.IsEnabled = enabled;
         IntervalBox.IsEnabled = enabled;
+    }
+
+    // Controls that are only usable once a trail has been recorded.
+    private void SetDataActionsEnabled(bool enabled)
+    {
+        ClearButton.IsEnabled = enabled;
+        ExportTextButton.IsEnabled = enabled;
+        ExportPngButton.IsEnabled = enabled;
     }
 
     private void SetStatus(string message, Brush brush)
