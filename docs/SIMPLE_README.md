@@ -7,6 +7,8 @@ I wrote this readme document for you in hopes to be able to clarify all your que
 > To open an issue: navigate to `Issues` -> `New Issue`
 
 ## What you'll need
+First, download the latest (stable) version of this tool from the [releases page](https://github.com/Sokkero/exanimapHelper/releases).
+
 To be able to use this tool, you will require to also use the application `Cheat Engine`, which can be found [here](https://www.cheatengine.org/).
 
 > <b>Cheat Engine? Whats that?</b>
