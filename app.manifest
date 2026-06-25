@@ -5,7 +5,7 @@
   <!--
     Reading another process's memory may require elevated privileges depending on
     the target process. requireAdministrator ensures OpenProcess/ReadProcessMemory
-    can attach to Exanima. Lower to asInvoker if elevation proves unnecessary.
+    can attach to Exanima.
   -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
