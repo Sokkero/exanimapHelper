@@ -25,7 +25,7 @@ To be able to use this tool, you will require to also use the application `Cheat
 >
 > Imagine it like this: A random person walks into IKEA and says "Hey, I'll just quickly go into your offices and look into some files, okay?". Of course any IKEA employee is going to stop this person and say "No, you cannot do that". So, it requires the manager of the store (in this case you), to approve of this and say "it's fine, they are allowed to".
 >
-> To approve, you can click on "More details" and then "Run anyway" on the Windows Defender pop-up. But:
+> To approve, you can click on "More info" and then "Run anyway" on the Windows Defender pop-up. But:
 >
 > <i><u>Its always better to <b>not</b> download a software youre unsure of!</u></i>
 
