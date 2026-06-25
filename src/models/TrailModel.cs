@@ -9,7 +9,7 @@ public sealed class TrailModel
 {
     // Samples closer than this to the previous recorded point are discarded, so the
     // trail only grows when the player has actually moved.
-    private const double MinDistance = 20;
+    private const double MinDistance = 50;
 
     private readonly List<List<TrailPoint>> _paths = new();
 
