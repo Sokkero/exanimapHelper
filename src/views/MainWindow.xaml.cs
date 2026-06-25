@@ -216,14 +216,14 @@ public partial class MainWindow : Window
         error = "";
 
         // Case 1 — validate input before touching memory.
-        if (!MemoryReader.TryParseAddress(XAddressBox.Text, out long xAddress))
+        if (!MemoryReader.TryParseAddress(XAddressBox.Text, out AddressSpec xSpec))
         {
-            error = "X address is not a valid hex value.";
+            error = "X address is not a valid hex value or Module+offset.";
             return false;
         }
-        if (!MemoryReader.TryParseAddress(YAddressBox.Text, out long yAddress))
+        if (!MemoryReader.TryParseAddress(YAddressBox.Text, out AddressSpec ySpec))
         {
-            error = "Y address is not a valid hex value.";
+            error = "Y address is not a valid hex value or Module+offset.";
             return false;
         }
         if (!int.TryParse(IntervalBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture,
@@ -246,6 +246,13 @@ public partial class MainWindow : Window
                 };
                 return false;
             }
+        }
+
+        // Resolve module-relative addresses now that a module base is known.
+        if (!_reader.TryResolve(xSpec, out long xAddress) || !_reader.TryResolve(ySpec, out long yAddress))
+        {
+            error = "Could not read Exanima's module base — try running this app as administrator.";
+            return false;
         }
 
         // Case 2 — test-read both addresses before committing; drop a stale handle

@@ -9,7 +9,9 @@ I wrote this readme document for you in hopes to be able to clarify all your que
 ## What you'll need
 First, download the latest (stable) version of this tool from the [releases page](https://github.com/Sokkero/exanimapHelper/releases).
 
-To be able to use this tool, you will require to also use the application `Cheat Engine`, which can be found [here](https://www.cheatengine.org/).
+In most cases that's all you need: the tool already knows Exanima's default memory locations and tries to read your character's position from them automatically.
+
+Sometimes those defaults don't work (for example after a game update). If that happens, you might also need the application `Cheat Engine`, which can be found [here](https://www.cheatengine.org/), to find the locations yourself — see [Getting started](#getting-started) below.
 
 > <b>Cheat Engine? Whats that?</b>
 >
@@ -32,14 +34,10 @@ To be able to use this tool, you will require to also use the application `Cheat
 > <i><u>Its always better to <b>not</b> download a software youre unsure of!</u></i>
 
 ## Getting started
-Before you can start using this tool to record all your movement, you will need to find the exact memory addresses of both the X and Y axis of your character. 
+Start Exanima, then open this tool. It comes pre-filled with Exanima's default memory addresses, so usually you can jump straight in: tab back into the game and hit F8. If all is set up correctly, the tool will now record your movement in-game, until you hit F8 again. On the lower left corner, you should be able to see the recorded values. On the right hand side, the program will draw a walk path from those points, which you can then later on export as a png.
 
-Sounds complicated? [I've got you covered.](CHEAT_ENGINE_INSTRUCTIONS.md)
-
-Once you have located the memory addresses, open this tool and paste them into their corresponding fields.
-
-Now tab back into the game and hit F8. If all is set up correctly, the tool will now record your movement in-game, until you hit F8 again. On the lower left corner, you should be able to see the recorded values. On the right hand side, the program will draw a walk path from those points, which you can then later on export as a png.
+If the tool can't read a valid position with the defaults (you'll see no values, or obviously-wrong ones), you'll need to find the addresses of your X and Y axis yourself. Sounds complicated? [I've got you covered.](CHEAT_ENGINE_INSTRUCTIONS.md) Once you've located them, paste them into their corresponding fields and try again.
 
 Thats pretty much it, have fun recording!
 
-> ⚠️ One thing to remember: the memory addresses change every time you restart Exanima. If you close and reopen the game, you'll need to find the addresses again before recording.
+> ⚠️ One thing to remember: the built-in defaults keep working across game restarts, so you don't need to do anything special. But if you had to find the addresses yourself with Cheat Engine, only the **green** (persistent) ones survive a restart — pick those, or you'll have to find them again every time you reopen the game.

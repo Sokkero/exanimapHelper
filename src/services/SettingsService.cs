@@ -6,8 +6,8 @@ namespace ExanimapHelper;
 /// <summary>User settings persisted between launches: the addresses and poll interval.</summary>
 public sealed class AppSettings
 {
-    public string XAddress { get; set; } = "";
-    public string YAddress { get; set; } = "";
+    public string XAddress { get; set; } = "Exanima.exe+48DDD0";
+    public string YAddress { get; set; } = "Exanima.exe+48DDD8";
     public int IntervalMs { get; set; } = 500;
 }
 
