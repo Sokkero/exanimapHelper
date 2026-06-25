@@ -95,13 +95,17 @@ public partial class MainWindow : Window
 
     private void OnValueRead(float x, float y)
     {
-        LiveXValue.Text = Format(x);
-        LiveYValue.Text = Format(y);
+        LiveXValue.Text = TrailPoint.Format(x);
+        LiveYValue.Text = TrailPoint.Format(y);
+
+        if (_trail.Count == 0)
+        {
+            ExportTextButton.IsEnabled = true;
+            ExportPngButton.IsEnabled = true;
+        }
 
         _trail.Add(x, y);
         DataList.ScrollIntoView(_trail.Points[^1]);
-        ExportTextButton.IsEnabled = true;
-        ExportPngButton.IsEnabled = true;
 
         // Case 3 (detectable subset) — flag obviously-broken values, keep recording.
         if (IsSuspicious(x) || IsSuspicious(y))
@@ -112,18 +116,13 @@ public partial class MainWindow : Window
 
     private void OnReadFailed(string message)
     {
-        // The loop already stopped itself; reset the UI to match.
-        _reader.Detach();
-        SetInputsEnabled(true);
-        StartStopButton.Content = "Start";
-        SetStatus(message, ErrorBrush);
+        // The loop already stopped itself; StopRecording resets the rest of the UI
+        // (the extra _polling.Stop() is a harmless no-op on a stopped timer).
+        StopRecording(message, ErrorBrush);
     }
 
     private static bool IsSuspicious(float value) =>
         float.IsNaN(value) || float.IsInfinity(value) || Math.Abs(value) > SuspiciousMagnitude;
-
-    private static string Format(float value) =>
-        value.ToString("0.###", CultureInfo.InvariantCulture);
 
     private void SetInputsEnabled(bool enabled)
     {
