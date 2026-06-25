@@ -32,6 +32,8 @@ public static class ExportService
 
     /// <summary>
     /// Renders the given canvas to a PNG file at its current on-screen size.
+    /// The canvas background is dropped during render so only the trail lines and
+    /// points are written, leaving everything else transparent.
     /// </summary>
     public static void ExportPng(Canvas canvas, string path)
     {
@@ -40,13 +42,25 @@ public static class ExportService
         if (w <= 0 || h <= 0)
             throw new InvalidOperationException("The graph has no size to export yet.");
 
-        var bitmap = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(canvas);
+        Brush originalBackground = canvas.Background;
+        canvas.Background = null;
+        try
+        {
+            // Force a layout pass so the cleared background is reflected before render.
+            canvas.UpdateLayout();
 
-        var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            var bitmap = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(canvas);
 
-        using FileStream fs = File.Create(path);
-        encoder.Save(fs);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+
+            using FileStream fs = File.Create(path);
+            encoder.Save(fs);
+        }
+        finally
+        {
+            canvas.Background = originalBackground;
+        }
     }
 }
