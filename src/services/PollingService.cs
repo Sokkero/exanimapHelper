@@ -3,13 +3,18 @@ using System.Windows.Threading;
 namespace ExanimapHelper;
 
 /// <summary>
+/// Drives the poll loop behind both the live readout and recording: on a fixed
+/// interval it reads the X and Y addresses from the attached process and reports
+/// the latest value of each. The two axes are read independently — an address that
+/// is unset or whose read fails is reported as null rather than failing the tick,
+/// so the caller decides what each result means (see <see cref="ValueRead"/>).
 /// </summary>
 public sealed class PollingService
 {
     private readonly MemoryReader _reader;
     private readonly DispatcherTimer _timer = new();
-    private long _xAddress;
-    private long _yAddress;
+    private long? _xAddress;
+    private long? _yAddress;
 
     public PollingService(MemoryReader reader)
     {
@@ -19,15 +24,15 @@ public sealed class PollingService
 
     public bool IsRunning => _timer.IsEnabled;
 
-    /// <summary>Raised on each successful tick with the freshly read values.</summary>
-    public event Action<float, float>? ValueRead;
-
-    /// <summary>Raised when a read fails; the loop has already been stopped.</summary>
-    public event Action<string>? ReadFailed;
+    /// <summary>
+    /// Raised each tick with the latest per-axis reads. A value is null when its
+    /// address is unset or the read failed.
+    /// </summary>
+    public event Action<float?, float?>? ValueRead;
 
     /// <summary>Starts (or restarts) the loop, reading once immediately and then
-    /// on every interval tick.</summary>
-    public void Start(long xAddress, long yAddress, int intervalMs)
+    /// on every interval tick. A null address simply isn't read.</summary>
+    public void Start(long? xAddress, long? yAddress, int intervalMs)
     {
         _xAddress = xAddress;
         _yAddress = yAddress;
@@ -42,14 +47,8 @@ public sealed class PollingService
 
     private void ReadOnce()
     {
-        if (!_reader.TryReadFloat(_xAddress, out float x) ||
-            !_reader.TryReadFloat(_yAddress, out float y))
-        {
-            _timer.Stop();
-            ReadFailed?.Invoke("Read failed — the process may have closed or the address became invalid. Recording stopped.");
-            return;
-        }
-
+        float? x = _xAddress is long xa && _reader.TryReadFloat(xa, out float xv) ? xv : null;
+        float? y = _yAddress is long ya && _reader.TryReadFloat(ya, out float yv) ? yv : null;
         ValueRead?.Invoke(x, y);
     }
 }
