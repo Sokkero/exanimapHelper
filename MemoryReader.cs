@@ -80,12 +80,13 @@ public sealed class MemoryReader : IDisposable
         if (_handle == IntPtr.Zero)
             return false;
 
-        byte[] buffer = new byte[sizeof(float)];
-        bool ok = ReadProcessMemory(_handle, (IntPtr)address, buffer, buffer.Length, out int read);
+        Span<byte> buffer = stackalloc byte[sizeof(float)];
+        bool ok = ReadProcessMemory(
+            _handle, (IntPtr)address, ref MemoryMarshal.GetReference(buffer), buffer.Length, out int read);
         if (!ok || read != buffer.Length)
             return false;
 
-        value = BitConverter.ToSingle(buffer, 0);
+        value = BitConverter.ToSingle(buffer);
         return true;
     }
 
@@ -118,7 +119,7 @@ public sealed class MemoryReader : IDisposable
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool ReadProcessMemory(
-        IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int dwSize, out int lpNumberOfBytesRead);
+        IntPtr hProcess, IntPtr lpBaseAddress, ref byte lpBuffer, int dwSize, out int lpNumberOfBytesRead);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
