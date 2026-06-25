@@ -5,53 +5,55 @@ using System.Windows.Interop;
 namespace ExanimapHelper;
 
 /// <summary>
-/// Registers a single system-wide hotkey via the Win32 RegisterHotKey API, so it
-/// fires even while another application (Exanima) has focus. A plain WPF key
-/// binding would not — it only works when this window is focused.
+/// Registers system-wide hotkeys via the Win32 RegisterHotKey API, so they fire
+/// even while another application (Exanima) has focus. A plain WPF key binding would
+/// not — it only works when this window is focused. Multiple hotkeys can be
+/// registered; each gets its own callback.
 /// </summary>
 public sealed class HotkeyService : IDisposable
 {
     private const int WM_HOTKEY = 0x0312;
-    private const int HotkeyId = 0xB001; // arbitrary, unique within this window
     private const uint MOD_NONE = 0x0000;
+    private const int FirstHotkeyId = 0xB001; // arbitrary; ids stay unique within this window
 
     private readonly Window _window;
-    private readonly uint _virtualKey;
+    private readonly Dictionary<int, Action> _callbacks = new();
     private HwndSource? _source;
     private IntPtr _handle;
-    private bool _registered;
+    private int _nextId = FirstHotkeyId;
 
-    /// <summary>Raised on the UI thread when the hotkey is pressed.</summary>
-    public event Action? Pressed;
-
-    public HotkeyService(Window window, uint virtualKey)
-    {
-        _window = window;
-        _virtualKey = virtualKey;
-    }
+    public HotkeyService(Window window) => _window = window;
 
     /// <summary>
-    /// Registers the hotkey. The window handle must already exist (call from
-    /// OnSourceInitialized or later). Returns false if registration failed, e.g.
-    /// the key is already taken globally by another app.
+    /// Registers a system-wide hotkey for <paramref name="virtualKey"/>, invoking
+    /// <paramref name="onPressed"/> on the UI thread when it fires. The window handle
+    /// must already exist (call from OnSourceInitialized or later). Returns false if
+    /// registration failed, e.g. the key is already taken globally by another app.
     /// </summary>
-    public bool Register()
+    public bool Register(uint virtualKey, Action onPressed)
     {
-        _handle = new WindowInteropHelper(_window).Handle;
-        _source = HwndSource.FromHwnd(_handle);
         if (_source is null)
+        {
+            _handle = new WindowInteropHelper(_window).Handle;
+            _source = HwndSource.FromHwnd(_handle);
+            if (_source is null)
+                return false;
+            _source.AddHook(WndProc);
+        }
+
+        int id = _nextId++;
+        if (!RegisterHotKey(_handle, id, MOD_NONE, virtualKey))
             return false;
 
-        _source.AddHook(WndProc);
-        _registered = RegisterHotKey(_handle, HotkeyId, MOD_NONE, _virtualKey);
-        return _registered;
+        _callbacks[id] = onPressed;
+        return true;
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        if (msg == WM_HOTKEY && wParam.ToInt32() == HotkeyId)
+        if (msg == WM_HOTKEY && _callbacks.TryGetValue(wParam.ToInt32(), out Action? onPressed))
         {
-            Pressed?.Invoke();
+            onPressed();
             handled = true;
         }
         return IntPtr.Zero;
@@ -59,11 +61,9 @@ public sealed class HotkeyService : IDisposable
 
     public void Dispose()
     {
-        if (_registered)
-        {
-            UnregisterHotKey(_handle, HotkeyId);
-            _registered = false;
-        }
+        foreach (int id in _callbacks.Keys)
+            UnregisterHotKey(_handle, id);
+        _callbacks.Clear();
         _source?.RemoveHook(WndProc);
         _source = null;
     }

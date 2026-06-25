@@ -22,6 +22,9 @@ public partial class MainWindow : Window
     // Global hotkey that toggles recording. VK_F8 = 0x77 — change here to rebind.
     private const uint HotkeyVirtualKey = 0x77;
 
+    // Global hotkey that marks a POI while recording. VK_F10 = 0x79.
+    private const uint PoiHotkeyVirtualKey = 0x79;
+
     private static readonly Brush ErrorBrush = Brushes.Firebrick;
     private static readonly Brush WarnBrush = Brushes.DarkOrange;
     private static readonly Brush InfoBrush = new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55));
@@ -52,8 +55,7 @@ public partial class MainWindow : Window
 
         _renderer = new GraphRenderer(GraphCanvas);
 
-        _hotkey = new HotkeyService(this, HotkeyVirtualKey);
-        _hotkey.Pressed += ToggleRecording;
+        _hotkey = new HotkeyService(this);
 
         XAddressBox.Text = _settings.XAddress;
         YAddressBox.Text = _settings.YAddress;
@@ -69,8 +71,14 @@ public partial class MainWindow : Window
         // restored addresses regardless of whether the hotkey registered.
         RefreshLivePreview();
 
-        if (!_hotkey.Register())
+        bool f8 = _hotkey.Register(HotkeyVirtualKey, ToggleRecording);
+        bool f10 = _hotkey.Register(PoiHotkeyVirtualKey, MarkPoi);
+        if (!f8 && !f10)
+            SetStatus("Could not register the F8/F10 hotkeys (another app may be using them).", WarnBrush);
+        else if (!f8)
             SetStatus("Could not register the F8 hotkey (another app may be using it).", WarnBrush);
+        else if (!f10)
+            SetStatus("Could not register the F10 hotkey (another app may be using it).", WarnBrush);
     }
 
     protected override void OnClosed(EventArgs e)
@@ -189,7 +197,12 @@ public partial class MainWindow : Window
         SetStatus("Recording stopped.", InfoBrush);
     }
 
-    private void MarkPoiButton_Click(object sender, RoutedEventArgs e)
+    private void MarkPoiButton_Click(object sender, RoutedEventArgs e) => MarkPoi();
+
+    // Marks a POI at the latest live position. Both the button and F10 call this; the
+    // hotkey fires globally, so the recording guard makes a press outside recording a
+    // no-op, matching the button being disabled then.
+    private void MarkPoi()
     {
         if (!IsRecording)
             return;
