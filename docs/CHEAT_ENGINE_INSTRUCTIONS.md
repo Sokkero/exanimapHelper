@@ -33,23 +33,25 @@ Now stand still and select `unchanged value` and tick `Repeat`. Now let it run t
 - Continue here right after getting started
 - Walk North-East and scan with type `Increased Value`
 - Walk South-West and scan with type `Decreased Value`
-- Repeat these steps a couple of times until <20 values are left
-- Most of these should contain very similar values (difference is less than 5.f)
+- Repeat these steps a couple of times until <50 values are left
+- If everything worked out fine, you should see at least 1 green entry (possibly more with very similar values)
+	- You know youre looking at the correct field if the value increases when walking east and dereases when walking west
 - Double click it so it appears at the bottom
-- You have found the X-Axis, now repeat for the Y-Axis!
+- Set the description to "X-Axis"
 
 ## Finding the Y-Axis
 
 - Continue here right after getting started
 - Walk South-East and scan with type `Increased Value`
 - Walk North-West and scan with type `Decreased Value`
-- Repeat these steps a couple of times until <20 values are left
-- Most of these should contain very similar values (difference is less than 5.f)
+- Repeat these steps a couple of times until <50 values are left
+- If everything worked out fine, you should see at least 1 green entry (possibly more with very similar values)
+	- You know youre looking at the correct field if the value increases when walking south and dereases when walking north
 - Double click it so it appears at the bottom
-- You have found the Y-Axis!
+- Set the description to "Y-Axis"
 
-Now simply right click on the address and copy it over into exanimapHelper.
+Now simply copy the addresses into exanimapHelper.
 
-> ⚠️ These addresses are only valid for the current Exanima session. If you restart the game, you will have to repeat this whole process to find them again.
+> ⚠️ Only green addresses are persistant addresses, all others will change each time the game is started.
 
 Done

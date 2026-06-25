@@ -1,7 +1,7 @@
 <Application x:Class="ExanimapHelper.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             StartupUri="src/views/MainWindow.xaml">
+             StartupUri="views/MainWindow.xaml">
     <Application.Resources>
         <!-- Dark theme palette: soft, low-contrast tones that are easier on the eyes -->
         <SolidColorBrush x:Key="WindowBg" Color="#FF252526" />

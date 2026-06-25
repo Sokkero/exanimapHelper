@@ -47,10 +47,13 @@ public partial class MainWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
+
+        // The hotkey and the live readout are independent; start the readout for any
+        // restored addresses regardless of whether the hotkey registered.
+        RefreshLivePreview();
+
         if (!_hotkey.Register())
             SetStatus("Could not register the F8 hotkey (another app may be using it).", WarnBrush);
-        else
-            RefreshLivePreview(); // resume the live readout for any restored addresses
     }
 
     protected override void OnClosed(EventArgs e)

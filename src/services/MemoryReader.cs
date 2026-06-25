@@ -108,7 +108,13 @@ public sealed class MemoryReader : IDisposable
         if (s.Length == 0)
             return false;
 
-        return long.TryParse(s, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out address);
+        // Parse as unsigned so a full 64-bit address (high bit set) round-trips by
+        // bit pattern instead of failing or going negative.
+        if (!ulong.TryParse(s, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out ulong value))
+            return false;
+
+        address = unchecked((long)value);
+        return true;
     }
 
     public void Dispose() => Detach();

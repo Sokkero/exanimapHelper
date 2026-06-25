@@ -94,13 +94,23 @@ public sealed class GraphRenderer
                 Points = screen,
             });
 
-        for (int i = 0; i < screen.Count; i++)
+        // Collapse all interior dots into one frozen geometry so the visual tree
+        // holds a handful of elements no matter how long the trail grows — a dot
+        // per point would add a UIElement (and a layout pass) for every sample.
+        if (screen.Count > 2)
         {
-            Brush brush = i == 0 ? StartBrush
-                        : i == screen.Count - 1 ? EndBrush
-                        : PointBrush;
-            AddDot(screen[i], brush);
+            double radius = PointDiameter / 2;
+            var dots = new GeometryGroup();
+            for (int i = 1; i < screen.Count - 1; i++)
+                dots.Children.Add(new EllipseGeometry(screen[i], radius, radius));
+            dots.Freeze();
+            _canvas.Children.Add(new Path { Fill = PointBrush, Data = dots });
         }
+
+        // Start and end keep their own marked colours.
+        AddDot(screen[0], StartBrush);
+        if (screen.Count > 1)
+            AddDot(screen[^1], EndBrush);
     }
 
     private void AddDot(Point p, Brush brush)
