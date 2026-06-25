@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
 
@@ -71,14 +72,13 @@ public partial class MainWindow : Window
         // restored addresses regardless of whether the hotkey registered.
         RefreshLivePreview();
 
-        bool f8 = _hotkey.Register(HotkeyVirtualKey, ToggleRecording);
-        bool f10 = _hotkey.Register(PoiHotkeyVirtualKey, MarkPoi);
-        if (!f8 && !f10)
-            SetStatus("Could not register the F8/F10 hotkeys (another app may be using them).", WarnBrush);
-        else if (!f8)
-            SetStatus("Could not register the F8 hotkey (another app may be using it).", WarnBrush);
-        else if (!f10)
-            SetStatus("Could not register the F10 hotkey (another app may be using it).", WarnBrush);
+        var failed = new List<string>();
+        if (!_hotkey.Register(HotkeyVirtualKey, ToggleRecording))
+            failed.Add("F8");
+        if (!_hotkey.Register(PoiHotkeyVirtualKey, MarkPoi))
+            failed.Add("F10");
+        if (failed.Count > 0)
+            SetStatus($"Could not register the {string.Join("/", failed)} hotkey(s) (another app may be using them).", WarnBrush);
     }
 
     protected override void OnClosed(EventArgs e)
@@ -214,12 +214,41 @@ public partial class MainWindow : Window
             return;
         }
 
+        CommitPoi(x, y);
+        SetStatus($"Recording… {_display.Count} entries — POI marked.", InfoBrush);
+    }
+
+    // Double-clicking the graph places a POI at the clicked location, after a
+    // confirmation prompt. Works whenever there is a rendered coordinate frame to map
+    // the click into, regardless of recording.
+    private void GraphCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount != 2)
+            return;
+
+        if (!_renderer.TryCanvasToData(e.GetPosition(GraphCanvas), out float x, out float y))
+        {
+            SetStatus("Can't place a POI yet — record or import some points first.", WarnBrush);
+            return;
+        }
+
+        if (MessageBox.Show(this, "Mark POI?", "Mark POI", MessageBoxButton.YesNo,
+                MessageBoxImage.Question) != MessageBoxResult.Yes)
+            return;
+
+        CommitPoi(x, y);
+        SetStatus($"POI marked at {new TrailPoint(x, y)}.", InfoBrush);
+    }
+
+    // Adds a POI to the model and reflects it in the list and graph. Callers set their
+    // own status message afterwards.
+    private void CommitPoi(float x, float y)
+    {
         _trail.AddPoi(x, y);
         _display.Add($"{PoiPrefix}{new TrailPoint(x, y)}");
         DataList.ScrollIntoView(_display[^1]);
         _renderer.Render(_trail.Paths, _trail.Pois);
         SetDataActionsEnabled(true);
-        SetStatus($"Recording… {_display.Count} entries — POI marked.", InfoBrush);
     }
 
     // Validates the inputs, attaches to Exanima if needed, and (re)starts the poll

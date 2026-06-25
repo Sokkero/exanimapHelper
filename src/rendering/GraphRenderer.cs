@@ -220,6 +220,22 @@ public sealed class GraphRenderer
         return new Point(sx, sy);
     }
 
+    /// <summary>
+    /// Maps a canvas point back to data (game) coordinates — the inverse of the fit
+    /// captured on the last <see cref="Render"/>. Returns false when nothing has been
+    /// rendered yet, so there is no coordinate frame to map into.
+    /// </summary>
+    public bool TryCanvasToData(Point canvasPoint, out float x, out float y)
+    {
+        x = 0;
+        y = 0;
+        if (_transform is not Transform t)
+            return false;
+        x = (float)(t.MinX + (canvasPoint.X - t.OffsetX) / t.Scale);
+        y = (float)(t.MaxY - (t.CanvasH - t.OffsetY - canvasPoint.Y) / t.Scale);
+        return true;
+    }
+
     // Positions the live dot from the current reading. With a transform it maps the
     // true coordinate and clamps to the canvas edge when off-screen, so the dot stays
     // visible even when the player roams away from the recorded trail. Without a

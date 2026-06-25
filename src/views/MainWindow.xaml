@@ -89,7 +89,8 @@
 
         <!-- Right panel: graph canvas -->
         <Border Grid.Column="1" BorderBrush="{StaticResource BorderBrushColor}" BorderThickness="1">
-            <Canvas x:Name="GraphCanvas" Background="#FF1E1E1E" ClipToBounds="True" />
+            <Canvas x:Name="GraphCanvas" Background="#FF1E1E1E" ClipToBounds="True"
+                    MouseLeftButtonDown="GraphCanvas_MouseLeftButtonDown" />
         </Border>
     </Grid>
 </Window>
