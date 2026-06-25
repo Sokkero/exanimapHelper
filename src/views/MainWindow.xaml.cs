@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
+using Microsoft.Win32;
 
 namespace ExanimapHelper;
 
@@ -123,6 +124,50 @@ public partial class MainWindow : Window
         // The loop already stopped itself; StopRecording resets the rest of the UI
         // (the extra _polling.Stop() is a harmless no-op on a stopped timer).
         StopRecording(message, ErrorBrush);
+    }
+
+    private void ExportTextButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = "Text file (*.txt)|*.txt|All files (*.*)|*.*",
+            DefaultExt = ".txt",
+            FileName = "exanima-trail.txt",
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        try
+        {
+            ExportService.ExportText(_trail.Points, dialog.FileName);
+            SetStatus($"Saved {_trail.Count} points to {dialog.FileName}", InfoBrush);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Export failed: {ex.Message}", ErrorBrush);
+        }
+    }
+
+    private void ExportPngButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = "PNG image (*.png)|*.png|All files (*.*)|*.*",
+            DefaultExt = ".png",
+            FileName = "exanima-trail.png",
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        try
+        {
+            ExportService.ExportPng(GraphCanvas, dialog.FileName);
+            SetStatus($"Saved graph to {dialog.FileName}", InfoBrush);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Export failed: {ex.Message}", ErrorBrush);
+        }
     }
 
     private static bool IsSuspicious(float value) =>
