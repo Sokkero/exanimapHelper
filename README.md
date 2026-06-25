@@ -9,18 +9,20 @@ plots the path on a coordinate system.
 
 ## Getting started
 ### Preamble
-Since this tool needs to be able to read the memory data of another program (Exanima), it must register itself as a program with administrative rights. This will trigger the Windows defender and might also trip some anti-virus scanners.
+Since this tool needs to be able to read the memory data of another program (Exanima), it must request administrative rights when it starts. This will trigger Windows Defender and might also trip some anti-virus scanners.
 
 ### Finding the correct addresses
-Exanimas memory allocation is non-static, therefore the tool cannot query the memory addresses for the X or Y position by itself.<br>
-To figure out the correct memory addresses, I recommend using [Cheatengine](https://www.cheatengine.org/).<br>
+Exanima's memory allocation is non-static, therefore the tool cannot query the memory addresses for the X or Y position by itself.<br>
+To figure out the correct memory addresses, I recommend using [Cheat Engine](https://www.cheatengine.org/).<br>
 
-For more help on how to find the correct variables using cheatengine, refer to [this document](docs/CHEAT_ENGINE_INSTRUCTIONS.md)
+For more help on how to find the correct variables using Cheat Engine, refer to [this document](docs/CHEAT_ENGINE_INSTRUCTIONS.md)
+
+> ⚠️ Because the addresses are non-static, they change every time Exanima restarts. You will need to find them again after each restart of the game.
 
 ### Usage
-The usage is pretty straight forward:
+The usage is straightforward:
 1) Start Exanima
-2) Link cheatengine to exanima and find the memory addresses for both X & Y axis
+2) Link Cheat Engine to Exanima and find the memory addresses for both the X & Y axis
 3) Copy the addresses into the tool
 4) Enter the game
 5) Press F8 to start
