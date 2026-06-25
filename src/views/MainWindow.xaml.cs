@@ -32,7 +32,6 @@ public partial class MainWindow : Window
 
         _polling = new PollingService(_reader);
         _polling.ValueRead += OnValueRead;
-        _polling.ReadFailed += OnReadFailed;
 
         _renderer = new GraphRenderer(GraphCanvas);
 
@@ -193,24 +192,36 @@ public partial class MainWindow : Window
         return true;
     }
 
-    private void OnValueRead(float x, float y)
+    private void OnValueRead(float? x, float? y)
     {
-        LiveXValue.Text = TrailPoint.Format(x);
-        LiveYValue.Text = TrailPoint.Format(y);
+        LiveXValue.Text = x is float xv ? TrailPoint.Format(xv) : "—";
+        LiveYValue.Text = y is float yv ? TrailPoint.Format(yv) : "—";
+
+        // A null axis means the address is unset or its read failed.
+        bool readFailed = x is null || y is null;
 
         // Case 3 (detectable subset) — flag obviously-broken values.
-        bool suspicious = IsSuspicious(x) || IsSuspicious(y);
+        bool suspicious = (x is float sx && IsSuspicious(sx)) || (y is float sy && IsSuspicious(sy));
 
         if (!_isRecording)
         {
-            SetStatus(suspicious
-                ? "Live preview — ⚠ value looks invalid, check the address."
-                : "Live preview running.", suspicious ? WarnBrush : InfoBrush);
+            SetStatus(readFailed
+                ? "Live preview — ⚠ could not read an address."
+                : suspicious
+                    ? "Live preview — ⚠ value looks invalid, check the address."
+                    : "Live preview running.", readFailed || suspicious ? WarnBrush : InfoBrush);
+            return;
+        }
+
+        // Can't record a point without both axes.
+        if (readFailed)
+        {
+            SetStatus($"Recording… {_trail.Count} points — ⚠ could not read an address.", WarnBrush);
             return;
         }
 
         // Only points far enough from the last one are recorded.
-        if (_trail.Add(x, y))
+        if (_trail.Add(x.Value, y.Value))
         {
             if (_trail.Count == 1)
                 SetDataActionsEnabled(true);
@@ -221,24 +232,6 @@ public partial class MainWindow : Window
         SetStatus(suspicious
             ? $"Recording… {_trail.Count} points — ⚠ value looks invalid, check the address."
             : $"Recording… {_trail.Count} points", suspicious ? WarnBrush : InfoBrush);
-    }
-
-    private void OnReadFailed(string message)
-    {
-        // The loop already stopped itself; tear down the rest (attach + UI).
-        _polling.Stop();
-        _reader.Detach();
-        LiveXValue.Text = "—";
-        LiveYValue.Text = "—";
-
-        if (_isRecording)
-        {
-            _isRecording = false;
-            SetInputsEnabled(true);
-            StartStopButton.Content = "Start (F8)";
-        }
-
-        SetStatus(message, ErrorBrush);
     }
 
     private void ExportTextButton_Click(object sender, RoutedEventArgs e)
