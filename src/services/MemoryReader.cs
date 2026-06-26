@@ -45,6 +45,12 @@ public sealed class MemoryReader : IDisposable
     /// </summary>
     public AttachStatus Attach()
     {
+        // Memory reading relies on Win32 OpenProcess/ReadProcessMemory. On non-Windows
+        // (the macOS dev build) there is nothing to attach to; report it instead of
+        // invoking the kernel32 P/Invokes.
+        if (!OperatingSystem.IsWindows())
+            return AttachStatus.Unsupported;
+
         Detach();
 
         Process[] matches = Process.GetProcessesByName(TargetProcessName);
@@ -217,4 +223,5 @@ public enum AttachStatus
     Attached,
     ProcessNotFound,
     AccessDenied,
+    Unsupported,
 }

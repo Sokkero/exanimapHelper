@@ -1,9 +1,12 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
-using System.Windows;
-using System.Windows.Input;
-using System.Windows.Media;
-using Microsoft.Win32;
+using System.Threading.Tasks;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.Platform;
+using Avalonia.Platform.Storage;
 
 namespace ExanimapHelper;
 
@@ -20,21 +23,19 @@ public partial class MainWindow : Window
     private const string NewPathRow = "— new path —";
     private const string PoiPrefix = "POI  ";
 
-    // Global hotkey that toggles recording. VK_F8 = 0x77 — change here to rebind.
-    private const uint HotkeyVirtualKey = 0x77;
+    private static readonly IBrush ErrorBrush = Brushes.Firebrick;
+    private static readonly IBrush WarnBrush = Brushes.DarkOrange;
+    private static readonly IBrush InfoBrush = new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55));
 
-    // Global hotkey that marks a POI while recording. VK_F10 = 0x79.
-    private const uint PoiHotkeyVirtualKey = 0x79;
-
-    private static readonly Brush ErrorBrush = Brushes.Firebrick;
-    private static readonly Brush WarnBrush = Brushes.DarkOrange;
-    private static readonly Brush InfoBrush = new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55));
+    private static readonly FilePickerFileType TxtType = new("Text file") { Patterns = new[] { "*.txt" } };
+    private static readonly FilePickerFileType PngType = new("PNG image") { Patterns = new[] { "*.png" } };
+    private static readonly FilePickerFileType AllType = new("All files") { Patterns = new[] { "*" } };
 
     private readonly MemoryReader _reader = new();
     private readonly TrailModel _trail = new();
     private readonly PollingService _polling;
     private readonly GraphRenderer _renderer;
-    private readonly HotkeyService _hotkey;
+    private readonly IHotkeyService _hotkey;
     private readonly AppSettings _settings = SettingsService.Load();
 
     // Flat, display-only view of the recorded data (point rows, path separators and
@@ -56,26 +57,40 @@ public partial class MainWindow : Window
 
         _renderer = new GraphRenderer(GraphCanvas);
 
-        _hotkey = new HotkeyService(this);
+        _hotkey = Hotkeys.Create(this);
 
         XAddressBox.Text = _settings.XAddress;
         YAddressBox.Text = _settings.YAddress;
         IntervalBox.Text = _settings.IntervalMs.ToString(CultureInfo.InvariantCulture);
         DataList.ItemsSource = _display;
+
+        TrySetIcon();
     }
 
-    protected override void OnSourceInitialized(EventArgs e)
+    private void TrySetIcon()
     {
-        base.OnSourceInitialized(e);
+        try
+        {
+            Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://ExanimapHelper/assets/appIcon.png")));
+        }
+        catch
+        {
+            // Window icon is cosmetic; never let a missing asset break startup.
+        }
+    }
+
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
 
         // The hotkey and the live readout are independent; start the readout for any
         // restored addresses regardless of whether the hotkey registered.
         RefreshLivePreview();
 
         var failed = new List<string>();
-        if (!_hotkey.Register(HotkeyVirtualKey, ToggleRecording))
+        if (!_hotkey.Register(Key.F8, ToggleRecording))
             failed.Add("F8");
-        if (!_hotkey.Register(PoiHotkeyVirtualKey, MarkPoi))
+        if (!_hotkey.Register(Key.F10, MarkPoi))
             failed.Add("F10");
         if (failed.Count > 0)
             SetStatus($"Could not register the {string.Join("/", failed)} hotkey(s) (another app may be using them).", WarnBrush);
@@ -84,8 +99,8 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         // Persist the addresses as entered, plus the interval if it is valid.
-        _settings.XAddress = XAddressBox.Text;
-        _settings.YAddress = YAddressBox.Text;
+        _settings.XAddress = XAddressBox.Text ?? "";
+        _settings.YAddress = YAddressBox.Text ?? "";
         if (int.TryParse(IntervalBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture,
                 out int intervalMs) && intervalMs > 0)
             _settings.IntervalMs = intervalMs;
@@ -97,7 +112,7 @@ public partial class MainWindow : Window
         base.OnClosed(e);
     }
 
-    private void StartStopButton_Click(object sender, RoutedEventArgs e) => ToggleRecording();
+    private void StartStopButton_Click(object? sender, RoutedEventArgs e) => ToggleRecording();
 
     // Drives the Start → Stop → Resume cycle. Both the button and F8 call this.
     private void ToggleRecording()
@@ -108,7 +123,7 @@ public partial class MainWindow : Window
             StartRecording();
     }
 
-    private void Input_LostFocus(object sender, RoutedEventArgs e) => RefreshLivePreview();
+    private void Input_LostFocus(object? sender, RoutedEventArgs e) => RefreshLivePreview();
 
     // Starts/refreshes the live readout when an address or the interval changes.
     // The poll loop runs continuously so Live X/Y stay current without recording.
@@ -140,7 +155,7 @@ public partial class MainWindow : Window
         _renderer.UpdateLiveMarker(null, null);
     }
 
-    private void ClearButton_Click(object sender, RoutedEventArgs e)
+    private void ClearButton_Click(object? sender, RoutedEventArgs e)
     {
         _trail.Clear();
         _display.Clear();
@@ -197,11 +212,11 @@ public partial class MainWindow : Window
         SetStatus("Recording stopped.", InfoBrush);
     }
 
-    private void MarkPoiButton_Click(object sender, RoutedEventArgs e) => MarkPoi();
+    private void MarkPoiButton_Click(object? sender, RoutedEventArgs e) => MarkPoi();
 
     // Marks a POI at the latest live position. Both the button and F10 call this; the
-    // hotkey fires globally, so the recording guard makes a press outside recording a
-    // no-op, matching the button being disabled then.
+    // hotkey fires while recording, so the recording guard makes a press outside
+    // recording a no-op, matching the button being disabled then.
     private void MarkPoi()
     {
         if (!IsRecording)
@@ -221,9 +236,10 @@ public partial class MainWindow : Window
     // Double-clicking the graph places a POI at the clicked location, after a
     // confirmation prompt. Works whenever there is a rendered coordinate frame to map
     // the click into, regardless of recording.
-    private void GraphCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private async void GraphCanvas_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.ClickCount != 2)
+        PointerPoint point = e.GetCurrentPoint(GraphCanvas);
+        if (e.ClickCount != 2 || !point.Properties.IsLeftButtonPressed)
             return;
 
         if (!_renderer.TryCanvasToData(e.GetPosition(GraphCanvas), out float x, out float y))
@@ -232,8 +248,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (MessageBox.Show(this, "Mark POI?", "Mark POI", MessageBoxButton.YesNo,
-                MessageBoxImage.Question) != MessageBoxResult.Yes)
+        if (!await ConfirmDialog.ShowAsync(this, "Mark POI", "Mark POI?"))
             return;
 
         CommitPoi(x, y);
@@ -284,6 +299,7 @@ public partial class MainWindow : Window
                 {
                     AttachStatus.ProcessNotFound => "Exanima is not running.",
                     AttachStatus.AccessDenied => "Could not open Exanima — try running this app as administrator.",
+                    AttachStatus.Unsupported => "Memory reading is only available on Windows.",
                     _ => "Could not attach to Exanima.",
                 };
                 return false;
@@ -357,21 +373,29 @@ public partial class MainWindow : Window
             : $"Recording… {_display.Count} entries", suspicious ? WarnBrush : InfoBrush);
     }
 
-    private void ExportTextButton_Click(object sender, RoutedEventArgs e)
+    private async void ExportTextButton_Click(object? sender, RoutedEventArgs e)
     {
-        var dialog = new SaveFileDialog
+        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Filter = "Text file (*.txt)|*.txt|All files (*.*)|*.*",
-            DefaultExt = ".txt",
-            FileName = "exanima-trail.txt",
-        };
-        if (dialog.ShowDialog() != true)
+            Title = "Export Data",
+            SuggestedFileName = "exanima-trail.txt",
+            DefaultExtension = "txt",
+            FileTypeChoices = new[] { TxtType, AllType },
+        });
+        if (file is null)
             return;
+
+        string? path = file.TryGetLocalPath();
+        if (path is null)
+        {
+            SetStatus("Could not resolve the chosen file path.", ErrorBrush);
+            return;
+        }
 
         try
         {
-            ExportService.ExportText(_trail.Paths, _trail.Pois, dialog.FileName);
-            SetStatus($"Saved trail to {dialog.FileName}", InfoBrush);
+            ExportService.ExportText(_trail.Paths, _trail.Pois, path);
+            SetStatus($"Saved trail to {path}", InfoBrush);
         }
         catch (Exception ex)
         {
@@ -379,16 +403,24 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ExportPngButton_Click(object sender, RoutedEventArgs e)
+    private async void ExportPngButton_Click(object? sender, RoutedEventArgs e)
     {
-        var dialog = new SaveFileDialog
+        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Filter = "PNG image (*.png)|*.png|All files (*.*)|*.*",
-            DefaultExt = ".png",
-            FileName = "exanima-trail.png",
-        };
-        if (dialog.ShowDialog() != true)
+            Title = "Export PNG",
+            SuggestedFileName = "exanima-trail.png",
+            DefaultExtension = "png",
+            FileTypeChoices = new[] { PngType, AllType },
+        });
+        if (file is null)
             return;
+
+        string? path = file.TryGetLocalPath();
+        if (path is null)
+        {
+            SetStatus("Could not resolve the chosen file path.", ErrorBrush);
+            return;
+        }
 
         try
         {
@@ -396,13 +428,13 @@ public partial class MainWindow : Window
             _renderer.SetLiveMarkerVisible(false);
             try
             {
-                ExportService.ExportPng(GraphCanvas, dialog.FileName);
+                ExportService.ExportPng(GraphCanvas, path);
             }
             finally
             {
                 _renderer.UpdateLiveMarker(_lastLiveX, _lastLiveY);
             }
-            SetStatus($"Saved graph to {dialog.FileName}", InfoBrush);
+            SetStatus($"Saved graph to {path}", InfoBrush);
         }
         catch (Exception ex)
         {
@@ -410,7 +442,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ImportTextButton_Click(object sender, RoutedEventArgs e)
+    private async void ImportTextButton_Click(object? sender, RoutedEventArgs e)
     {
         if (IsRecording)
         {
@@ -418,17 +450,25 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dialog = new OpenFileDialog
+        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Filter = "Text file (*.txt)|*.txt|All files (*.*)|*.*",
-            DefaultExt = ".txt",
-        };
-        if (dialog.ShowDialog() != true)
+            Title = "Import Data",
+            AllowMultiple = false,
+            FileTypeFilter = new[] { TxtType, AllType },
+        });
+        if (files.Count == 0)
             return;
+
+        string? path = files[0].TryGetLocalPath();
+        if (path is null)
+        {
+            SetStatus("Could not resolve the chosen file path.", ErrorBrush);
+            return;
+        }
 
         try
         {
-            ExportService.ImportResult result = ExportService.ImportText(dialog.FileName);
+            ExportService.ImportResult result = ExportService.ImportText(path);
             _trail.Load(result.Paths, result.Pois);
             RebuildDisplay();
             _renderer.Render(_trail.Paths, _trail.Pois);
@@ -440,7 +480,7 @@ public partial class MainWindow : Window
             SetDataActionsEnabled(_trail.HasData);
             if (_display.Count > 0)
                 DataList.ScrollIntoView(_display[^1]);
-            SetStatus($"Imported trail from {dialog.FileName}", InfoBrush);
+            SetStatus($"Imported trail from {path}", InfoBrush);
         }
         catch (Exception ex)
         {
@@ -487,7 +527,7 @@ public partial class MainWindow : Window
         ExportPngButton.IsEnabled = enabled;
     }
 
-    private void SetStatus(string message, Brush brush)
+    private void SetStatus(string message, IBrush brush)
     {
         StatusText.Foreground = brush;
         StatusText.Text = message;

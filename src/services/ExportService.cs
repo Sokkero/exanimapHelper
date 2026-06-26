@@ -1,9 +1,10 @@
 using System.Globalization;
 using System.IO;
 using System.Text;
-using System.Windows.Controls;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
 
 namespace ExanimapHelper;
 
@@ -141,30 +142,26 @@ public static class ExportService
     /// </summary>
     public static void ExportPng(Canvas canvas, string path)
     {
-        if (canvas.ActualWidth <= 0 || canvas.ActualHeight <= 0)
+        if (canvas.Bounds.Width <= 0 || canvas.Bounds.Height <= 0)
             throw new InvalidOperationException("The graph has no size to export yet.");
 
         // Pixel dimensions are scaled up and the DPI raised to match, so the canvas's
         // on-screen layout size maps onto more pixels — a sharper image at the same
         // framing.
-        int pxW = (int)Math.Ceiling(canvas.ActualWidth * PngScale);
-        int pxH = (int)Math.Ceiling(canvas.ActualHeight * PngScale);
+        int pxW = (int)Math.Ceiling(canvas.Bounds.Width * PngScale);
+        int pxH = (int)Math.Ceiling(canvas.Bounds.Height * PngScale);
 
-        Brush originalBackground = canvas.Background;
+        IBrush? originalBackground = canvas.Background;
         canvas.Background = null;
         try
         {
-            // Force a layout pass so the cleared background is reflected before render.
-            canvas.UpdateLayout();
-
-            var bitmap = new RenderTargetBitmap(pxW, pxH, 96 * PngScale, 96 * PngScale, PixelFormats.Pbgra32);
+            // RenderTargetBitmap maps the canvas's DIP size onto the pixel grid using
+            // its DPI; raising both DPI and pixel size by the same factor supersamples
+            // the vector content rather than upscaling. Save writes a PNG.
+            using var bitmap = new RenderTargetBitmap(
+                new PixelSize(pxW, pxH), new Vector(96 * PngScale, 96 * PngScale));
             bitmap.Render(canvas);
-
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(bitmap));
-
-            using FileStream fs = File.Create(path);
-            encoder.Save(fs);
+            bitmap.Save(path);
         }
         finally
         {

@@ -1,7 +1,7 @@
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
-using System.Windows.Shapes;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
+using Avalonia.Media;
 
 namespace ExanimapHelper;
 
@@ -22,11 +22,11 @@ public sealed class GraphRenderer
     private const double PointDiameter = 5;
     private const double PoiDiameter = PointDiameter * 10;
 
-    private static readonly Brush LineBrush = Brushes.SteelBlue;
-    private static readonly Brush PointBrush = Brushes.SteelBlue;
-    private static readonly Brush LatestBrush = Brushes.Firebrick;  // most recent recorded point
-    private static readonly Brush PoiBrush = Brushes.Red;           // hollow circle
-    private static readonly Brush LiveBrush = Brushes.Red;          // live position dot
+    private static readonly IBrush LineBrush = Brushes.SteelBlue;
+    private static readonly IBrush PointBrush = Brushes.SteelBlue;
+    private static readonly IBrush LatestBrush = Brushes.Firebrick;  // most recent recorded point
+    private static readonly IBrush PoiBrush = Brushes.Red;           // hollow circle
+    private static readonly IBrush LiveBrush = Brushes.Red;          // live position dot
 
     private readonly Canvas _canvas;
 
@@ -45,7 +45,7 @@ public sealed class GraphRenderer
         Width = PointDiameter,
         Height = PointDiameter,
         Fill = LiveBrush,
-        Visibility = Visibility.Collapsed,
+        IsVisible = false,
     };
     private float? _liveX, _liveY;
 
@@ -68,8 +68,8 @@ public sealed class GraphRenderer
         _canvas.Children.Clear();
         _transform = null;
 
-        double w = _canvas.ActualWidth;
-        double h = _canvas.ActualHeight;
+        double w = _canvas.Bounds.Width;
+        double h = _canvas.Bounds.Height;
         if (w <= 0 || h <= 0)
         {
             // Not laid out yet; still keep the live dot attached for later updates.
@@ -134,7 +134,7 @@ public sealed class GraphRenderer
         double radius = PointDiameter / 2;
         foreach (IReadOnlyList<TrailPoint> path in paths)
         {
-            var screen = new PointCollection(path.Count);
+            var screen = new Points();
             foreach (TrailPoint p in path)
             {
                 if (!TrailPoint.IsFinite(p))
@@ -150,17 +150,15 @@ public sealed class GraphRenderer
                     Points = screen,
                 });
 
-            // Collapse this path's dots into the shared frozen geometry so the visual
-            // tree stays tiny no matter how long the trail grows.
+            // Collapse this path's dots into one geometry so the visual tree stays
+            // tiny no matter how long the trail grows.
             foreach (Point sp in screen)
-                allDots.Children.Add(new EllipseGeometry(sp, radius, radius));
+                allDots.Children.Add(new EllipseGeometry(
+                    new Rect(sp.X - radius, sp.Y - radius, PointDiameter, PointDiameter)));
         }
 
         if (allDots.Children.Count > 0)
-        {
-            allDots.Freeze();
-            _canvas.Children.Add(new Path { Fill = PointBrush, Data = allDots });
-        }
+            _canvas.Children.Add(new Avalonia.Controls.Shapes.Path { Fill = PointBrush, Data = allDots });
 
         // POIs: hollow red circles at 10x point size.
         foreach (TrailPoint p in pois)
@@ -200,8 +198,7 @@ public sealed class GraphRenderer
     }
 
     /// <summary>Shows/hides the live dot. Export hides it so it never lands in the PNG.</summary>
-    public void SetLiveMarkerVisible(bool visible) =>
-        _liveDot.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+    public void SetLiveMarkerVisible(bool visible) => _liveDot.IsVisible = visible;
 
     private static TrailPoint? FindLatest(IReadOnlyList<IReadOnlyList<TrailPoint>> paths)
     {
@@ -242,11 +239,11 @@ public sealed class GraphRenderer
     // transform (nothing recorded yet) it sits at the canvas centre.
     private void PositionLiveDot()
     {
-        double w = _canvas.ActualWidth, h = _canvas.ActualHeight;
+        double w = _canvas.Bounds.Width, h = _canvas.Bounds.Height;
         if (_liveX is not float lx || _liveY is not float ly
             || !TrailPoint.IsFinite(lx) || !TrailPoint.IsFinite(ly) || w <= 0 || h <= 0)
         {
-            _liveDot.Visibility = Visibility.Collapsed;
+            _liveDot.IsVisible = false;
             return;
         }
 
@@ -259,16 +256,15 @@ public sealed class GraphRenderer
         {
             p = ToScreen(new TrailPoint(lx, ly));
             double r = PointDiameter / 2;
-            p.X = Math.Clamp(p.X, r, w - r);
-            p.Y = Math.Clamp(p.Y, r, h - r);
+            p = new Point(Math.Clamp(p.X, r, w - r), Math.Clamp(p.Y, r, h - r));
         }
 
         Canvas.SetLeft(_liveDot, p.X - PointDiameter / 2);
         Canvas.SetTop(_liveDot, p.Y - PointDiameter / 2);
-        _liveDot.Visibility = Visibility.Visible;
+        _liveDot.IsVisible = true;
     }
 
-    private void AddDot(Point p, Brush brush)
+    private void AddDot(Point p, IBrush brush)
     {
         var dot = new Ellipse { Width = PointDiameter, Height = PointDiameter, Fill = brush };
         Canvas.SetLeft(dot, p.X - PointDiameter / 2);

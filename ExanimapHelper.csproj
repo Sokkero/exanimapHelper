@@ -2,27 +2,35 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>true</UseWPF>
     <RootNamespace>ExanimapHelper</RootNamespace>
     <AssemblyName>ExanimapHelper</AssemblyName>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
+    <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">assets/appIcon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <!-- The memory reader needs to match Exanima's 64-bit pointers, so the Windows
+       production build targets x64. The macOS dev build never reads memory and runs
+       on the host architecture (arm64), so it stays AnyCPU. -->
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>assets/appIcon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- App.xaml lives under src/, so the SDK's default ApplicationDefinition
-         (which only looks for a root App.xaml) won't find it. Declare it
-         explicitly; the default Page glob excludes @(ApplicationDefinition), so
-         this also stops src/App.xaml being mis-included as a Page. -->
-    <ApplicationDefinition Include="src/App.xaml" />
+    <AvaloniaResource Include="assets/appIcon.png" />
+  </ItemGroup>
 
-    <!-- Window icon (top-left of the window); bundled into the assembly -->
-    <Resource Include="assets/appIcon.png" />
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.18" />
+    <!-- Avalonia DevTools (F12) — debug builds only. -->
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.18" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>
 
 </Project>
