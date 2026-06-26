@@ -41,3 +41,11 @@ If the tool can't read a valid position with the defaults (you'll see no values,
 Thats pretty much it, have fun recording!
 
 > ⚠️ One thing to remember: the built-in defaults keep working across game restarts, so you don't need to do anything special. But if you had to find the addresses yourself with Cheat Engine, only the **green** (persistent) ones survive a restart — pick those, or you'll have to find them again every time you reopen the game.
+
+### Pre-made maps
+If youd like to use this application to simply track your movements on an already existing map, you can use the import functionality to import a pre-made map. Some maps ready for import can be found in the `trails/` folder of this project. Simply downlaod it, start the app, select "Import Data" and select the file!
+Also, feel free to open PRs including your maps to contibute to the collection!
+
+> <b>I'd like to contribute, but what is a "PR"?</b>
+>
+> A PR (Pull request) is a request you can make, to contribute changes to this project. For this, you will either have to [clone this repository](https://www.w3schools.com/git/) or you can also just open a new issue and 

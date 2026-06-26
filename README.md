@@ -30,6 +30,9 @@ The usage is straightforward:
 
 If the live readout shows no or obviously-wrong values, the defaults didn't work for your version — find the addresses with Cheat Engine (see above) and paste them in before step 4.
 
+### Pre-made maps
+If youd like to use this application to track your movements on an already existing map, you can use the import functionality to import a pre-made map. Some maps ready for import can be found in the `trails/` folder. Also feel free to open PRs including your maps to contibute!
+
 ## Build
 The app is built on [Avalonia](https://avaloniaui.net/) and targets .NET 8, so it
 builds and runs on both Windows (production) and macOS (UI/graph/import-export
