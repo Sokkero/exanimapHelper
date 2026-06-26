@@ -29,3 +29,39 @@ The usage is straightforward:
 7) View the graph or even export it as a png
 
 If the live readout shows no or obviously-wrong values, the defaults didn't work for your version — find the addresses with Cheat Engine (see above) and paste them in before step 4.
+
+### Pre-made maps
+If youd like to use this application to track your movements on an already existing map, you can use the import functionality to import a pre-made map. Some maps ready for import can be found in the `trails/` folder. Also feel free to open PRs including your maps to contibute!
+
+## Build
+The app is built on [Avalonia](https://avaloniaui.net/) and targets .NET 8, so it
+builds and runs on both Windows (production) and macOS (UI/graph/import-export
+development — memory reading is disabled off Windows).
+
+> If `dotnet` isn't on your `PATH`, prefix the commands below with
+> `export PATH="/usr/local/share/dotnet:$PATH"` or add it to your shell profile.
+
+### macOS (development)
+```bash
+dotnet run            # build and launch from source
+# or
+dotnet build          # produces ./bin/Debug/net8.0/ExanimapHelper
+```
+For a self-contained build, publish for the host architecture (use `osx-x64` on
+Intel Macs):
+```bash
+dotnet publish -c Release -r osx-arm64 --self-contained \
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o out
+```
+
+### Windows (production)
+Build **on Windows** (or a Windows CI runner). The elevation manifest (required for
+reading Exanima's memory), the app icon, and the x64 platform are gated on the build
+host being Windows — a build produced on macOS would omit them.
+```bash
+dotnet publish -c Release -r win-x64 --self-contained ^
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+```
+The single-file flags bundle everything into one `ExanimapHelper.exe`. Drop
+`--self-contained` for a much smaller exe that instead requires the .NET 8 runtime to
+be installed on the target machine.

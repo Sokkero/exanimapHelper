@@ -1,10 +1,9 @@
-<Window x:Class="ExanimapHelper.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ExanimapHelper.MainWindow"
         Title="ExanimapHelper" Height="640" Width="1024"
         MinHeight="480" MinWidth="800"
-        Background="{StaticResource WindowBg}"
-        Icon="/assets/appIcon.png">
+        Background="{StaticResource WindowBg}">
 
     <Grid Margin="10">
         <Grid.ColumnDefinitions>
@@ -18,12 +17,15 @@
             <!-- Bottom: Start/Stop + export buttons + status -->
             <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
                 <Button x:Name="StartStopButton" Content="Start (F8)" Height="32"
+                        HorizontalAlignment="Stretch"
                         Click="StartStopButton_Click" />
                 <Button x:Name="MarkPoiButton" Content="Mark POI (F10)" Height="28"
+                        HorizontalAlignment="Stretch"
                         Margin="0,8,0,0" IsEnabled="False" Click="MarkPoiButton_Click" />
                 <TextBlock x:Name="StatusText" Margin="0,6,0,0" TextWrapping="Wrap"
                            Foreground="{StaticResource MutedFg}" />
                 <Button x:Name="ClearButton" Content="Clear" Height="28"
+                        HorizontalAlignment="Stretch"
                         Margin="0,8,0,0" IsEnabled="False" Click="ClearButton_Click" />
                 <Grid Margin="0,8,0,0">
                     <Grid.ColumnDefinitions>
@@ -32,12 +34,15 @@
                     </Grid.ColumnDefinitions>
                     <Button x:Name="ExportTextButton" Grid.Column="0"
                             Content="Export Data" Height="28" Margin="0,0,4,0"
+                            HorizontalAlignment="Stretch"
                             IsEnabled="False" Click="ExportTextButton_Click" />
                     <Button x:Name="ImportTextButton" Grid.Column="1"
                             Content="Import Data" Height="28" Margin="4,0,0,0"
+                            HorizontalAlignment="Stretch"
                             Click="ImportTextButton_Click" />
                 </Grid>
                 <Button x:Name="ExportPngButton" Content="Export PNG" Height="28"
+                        HorizontalAlignment="Stretch"
                         Margin="0,8,0,0" IsEnabled="False" Click="ExportPngButton_Click" />
             </StackPanel>
 
@@ -45,11 +50,11 @@
             <StackPanel DockPanel.Dock="Top">
                 <TextBlock Text="X-Axis memory address:" />
                 <TextBox x:Name="XAddressBox" Margin="0,2,0,10" Padding="4,3"
-                         FontFamily="Consolas" LostFocus="Input_LostFocus" />
+                         FontFamily="{StaticResource MonoFont}" LostFocus="Input_LostFocus" />
 
                 <TextBlock Text="Y-Axis memory address:" />
                 <TextBox x:Name="YAddressBox" Margin="0,2,0,10" Padding="4,3"
-                         FontFamily="Consolas" LostFocus="Input_LostFocus" />
+                         FontFamily="{StaticResource MonoFont}" LostFocus="Input_LostFocus" />
 
                 <TextBlock Text="Poll interval (ms):" />
                 <TextBox x:Name="IntervalBox" Text="500" Margin="0,2,0,10"
@@ -69,10 +74,10 @@
                         </Grid.RowDefinitions>
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Live X: " />
                         <TextBlock Grid.Row="0" Grid.Column="1" x:Name="LiveXValue"
-                                   Text="—" FontFamily="Consolas" />
+                                   Text="—" FontFamily="{StaticResource MonoFont}" />
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="Live Y: " />
                         <TextBlock Grid.Row="1" Grid.Column="1" x:Name="LiveYValue"
-                                   Text="—" FontFamily="Consolas" />
+                                   Text="—" FontFamily="{StaticResource MonoFont}" />
                     </Grid>
                 </Border>
 
@@ -82,7 +87,9 @@
             <!-- Fill: scrollable data list -->
             <Border BorderBrush="{StaticResource BorderBrushColor}" BorderThickness="1">
                 <ListBox x:Name="DataList" BorderThickness="0"
-                         FontFamily="Consolas"
+                         FontFamily="{StaticResource MonoFont}"
+                         SelectionChanged="DataList_SelectionChanged"
+                         KeyDown="DataList_KeyDown"
                          ScrollViewer.VerticalScrollBarVisibility="Auto" />
             </Border>
         </DockPanel>
@@ -90,7 +97,7 @@
         <!-- Right panel: graph canvas -->
         <Border Grid.Column="1" BorderBrush="{StaticResource BorderBrushColor}" BorderThickness="1">
             <Canvas x:Name="GraphCanvas" Background="#FF1E1E1E" ClipToBounds="True"
-                    MouseLeftButtonDown="GraphCanvas_MouseLeftButtonDown" />
+                    PointerPressed="GraphCanvas_PointerPressed" />
         </Border>
     </Grid>
 </Window>

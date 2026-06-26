@@ -1,0 +1,81 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ExanimapHelper.App"
+             RequestedThemeVariant="Dark">
+
+    <Application.Resources>
+        <!-- Dark theme palette: soft, low-contrast tones that are easier on the eyes -->
+        <SolidColorBrush x:Key="WindowBg" Color="#FF252526" />
+        <SolidColorBrush x:Key="SurfaceBg" Color="#FF2D2D30" />
+        <SolidColorBrush x:Key="InputBg" Color="#FF333337" />
+        <SolidColorBrush x:Key="BorderBrushColor" Color="#FF3F3F46" />
+        <SolidColorBrush x:Key="TextFg" Color="#FFDCDCDC" />
+        <SolidColorBrush x:Key="MutedFg" Color="#FF9A9A9A" />
+        <SolidColorBrush x:Key="ButtonBg" Color="#FF3F3F46" />
+        <SolidColorBrush x:Key="ButtonHoverBg" Color="#FF505059" />
+        <SolidColorBrush x:Key="ButtonPressedBg" Color="#FF2A2A2E" />
+        <SolidColorBrush x:Key="ButtonDisabledBg" Color="#FF2A2A2C" />
+        <SolidColorBrush x:Key="DisabledFg" Color="#FF6A6A6A" />
+
+        <FontFamily x:Key="MonoFont">Consolas,Menlo,monospace</FontFamily>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="{DynamicResource InputBg}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFg}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource TextFg}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushColor}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="ListBox">
+            <Setter Property="Background" Value="{DynamicResource InputBg}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFg}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushColor}" />
+        </Style>
+
+        <Style Selector="ListBoxItem">
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="6,1" />
+        </Style>
+
+        <!-- Flat dark button. Avalonia uses pseudo-class selectors (:pointerover,
+             :pressed, :disabled) in place of WPF's ControlTemplate.Triggers. -->
+        <Style Selector="Button">
+            <Setter Property="Background" Value="{DynamicResource ButtonBg}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFg}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushColor}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="3">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          Foreground="{TemplateBinding Foreground}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button:pointerover /template/ Border#border">
+            <Setter Property="Background" Value="{DynamicResource ButtonHoverBg}" />
+        </Style>
+        <Style Selector="Button:pressed /template/ Border#border">
+            <Setter Property="Background" Value="{DynamicResource ButtonPressedBg}" />
+        </Style>
+        <Style Selector="Button:disabled /template/ Border#border">
+            <Setter Property="Background" Value="{DynamicResource ButtonDisabledBg}" />
+        </Style>
+        <Style Selector="Button:disabled">
+            <Setter Property="Foreground" Value="{DynamicResource DisabledFg}" />
+        </Style>
+    </Application.Styles>
+</Application>

@@ -62,6 +62,31 @@ public sealed class TrailModel
     public void AddPoi(float x, float y) => Pois.Add(new TrailPoint(x, y));
 
     /// <summary>
+    /// Removes one point from a path by index. The path's remaining points stay in
+    /// order, so the neighbours either side of the removed point become adjacent and
+    /// the rendered polyline joins them directly. Out-of-range indices are ignored.
+    /// An emptied path is left in place (it renders as nothing) to keep later path
+    /// indices stable for any in-flight recording.
+    /// </summary>
+    public void RemovePoint(int pathIndex, int pointIndex)
+    {
+        if (pathIndex < 0 || pathIndex >= _paths.Count)
+            return;
+        List<TrailPoint> path = _paths[pathIndex];
+        if (pointIndex < 0 || pointIndex >= path.Count)
+            return;
+        path.RemoveAt(pointIndex);
+    }
+
+    /// <summary>Removes one POI by index. Out-of-range indices are ignored.</summary>
+    public void RemovePoi(int poiIndex)
+    {
+        if (poiIndex < 0 || poiIndex >= Pois.Count)
+            return;
+        Pois.RemoveAt(poiIndex);
+    }
+
+    /// <summary>
     /// Drops the current path if it is still empty. Called when recording stops so a
     /// path that was started but never filled (e.g. resume with no movement) never
     /// reaches export as a spurious blank line.
