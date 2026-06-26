@@ -44,8 +44,12 @@ Thats pretty much it, have fun recording!
 
 ### Pre-made maps
 If youd like to use this application to simply track your movements on an already existing map, you can use the import functionality to import a pre-made map. Some maps ready for import can be found in the `trails/` folder of this project. Simply downlaod it, start the app, select "Import Data" and select the file!
-Also, feel free to open PRs including your maps to contibute to the collection!
+Also, feel free to contibute to the collection by either creating a PR or sharing your data through a new `Issue`!
 
-> <b>I'd like to contribute, but what is a "PR"?</b>
+> <b>I'd like to contribute directly, but what is a "PR"?</b>
 >
-> A PR (Pull request) is a request you can make, to contribute changes to this project. For this, you will either have to [clone this repository](https://www.w3schools.com/git/) or you can also just open a new issue and 
+> A PR (Pull request) is a request you can make, to contribute changes to this project. For this, you will have to [setup git on your machine](https://www.w3schools.com/git/), fork this repository, add the file into your forked repository, push it and [create a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) here.
+>
+> Sounds to complicated?<br>I get that, just create a new issue and I'll take care of it for you!
+
+> To open an issue: navigate to `Issues` -> `New Issue`
