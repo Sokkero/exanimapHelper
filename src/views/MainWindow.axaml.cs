@@ -373,24 +373,39 @@ public partial class MainWindow : Window
             : $"Recording… {_display.Count} entries", suspicious ? WarnBrush : InfoBrush);
     }
 
+    // Runs a picker, then resolves the chosen file to a local path. Returns null if the
+    // user cancelled, or sets the error status and returns null if the path can't be
+    // resolved (e.g. a non-local provider location). Shared by all three handlers.
+    private async Task<string?> PickSavePathAsync(FilePickerSaveOptions options) =>
+        ResolveLocalPath(await StorageProvider.SaveFilePickerAsync(options));
+
+    private async Task<string?> PickOpenPathAsync(FilePickerOpenOptions options)
+    {
+        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(options);
+        return ResolveLocalPath(files.Count > 0 ? files[0] : null);
+    }
+
+    private string? ResolveLocalPath(IStorageFile? file)
+    {
+        if (file is null)
+            return null;
+        string? path = file.TryGetLocalPath();
+        if (path is null)
+            SetStatus("Could not resolve the chosen file path.", ErrorBrush);
+        return path;
+    }
+
     private async void ExportTextButton_Click(object? sender, RoutedEventArgs e)
     {
-        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        string? path = await PickSavePathAsync(new FilePickerSaveOptions
         {
             Title = "Export Data",
             SuggestedFileName = "exanima-trail.txt",
             DefaultExtension = "txt",
             FileTypeChoices = new[] { TxtType, AllType },
         });
-        if (file is null)
-            return;
-
-        string? path = file.TryGetLocalPath();
         if (path is null)
-        {
-            SetStatus("Could not resolve the chosen file path.", ErrorBrush);
             return;
-        }
 
         try
         {
@@ -405,22 +420,15 @@ public partial class MainWindow : Window
 
     private async void ExportPngButton_Click(object? sender, RoutedEventArgs e)
     {
-        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        string? path = await PickSavePathAsync(new FilePickerSaveOptions
         {
             Title = "Export PNG",
             SuggestedFileName = "exanima-trail.png",
             DefaultExtension = "png",
             FileTypeChoices = new[] { PngType, AllType },
         });
-        if (file is null)
-            return;
-
-        string? path = file.TryGetLocalPath();
         if (path is null)
-        {
-            SetStatus("Could not resolve the chosen file path.", ErrorBrush);
             return;
-        }
 
         try
         {
@@ -450,21 +458,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        string? path = await PickOpenPathAsync(new FilePickerOpenOptions
         {
             Title = "Import Data",
             AllowMultiple = false,
             FileTypeFilter = new[] { TxtType, AllType },
         });
-        if (files.Count == 0)
-            return;
-
-        string? path = files[0].TryGetLocalPath();
         if (path is null)
-        {
-            SetStatus("Could not resolve the chosen file path.", ErrorBrush);
             return;
-        }
 
         try
         {

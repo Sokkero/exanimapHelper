@@ -80,7 +80,6 @@ internal sealed class Win32HotkeyService : IHotkeyService
     private readonly Win32Properties.CustomWndProcHookCallback _hook;
     private IntPtr _handle;
     private int _nextId = FirstHotkeyId;
-    private bool _hookAdded;
 
     public Win32HotkeyService(Window window)
     {
@@ -93,7 +92,7 @@ internal sealed class Win32HotkeyService : IHotkeyService
         if (!TryGetVirtualKey(key, out uint vk))
             return false;
 
-        if (!_hookAdded)
+        if (_handle == IntPtr.Zero)
         {
             // The window handle exists once the window is opened; Register is called
             // from OnOpened, so this is safe.
@@ -102,7 +101,6 @@ internal sealed class Win32HotkeyService : IHotkeyService
                 return false;
             _handle = handle.Handle;
             Win32Properties.AddWndProcHookCallback(_window, _hook);
-            _hookAdded = true;
         }
 
         int id = _nextId++;
@@ -141,10 +139,10 @@ internal sealed class Win32HotkeyService : IHotkeyService
         foreach (int id in _callbacks.Keys)
             UnregisterHotKey(_handle, id);
         _callbacks.Clear();
-        if (_hookAdded)
+        if (_handle != IntPtr.Zero)
         {
             Win32Properties.RemoveWndProcHookCallback(_window, _hook);
-            _hookAdded = false;
+            _handle = IntPtr.Zero;
         }
     }
 

@@ -27,7 +27,7 @@ public static class ConfirmDialog
             SizeToContent = SizeToContent.Height,
             CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = new SolidColorBrush(Color.FromRgb(0x25, 0x25, 0x26)),
+            Background = PaletteBrush("WindowBg", 0x25, 0x25, 0x26),
             Content = new StackPanel
             {
                 Margin = new Thickness(16),
@@ -38,7 +38,7 @@ public static class ConfirmDialog
                     {
                         Text = message,
                         TextWrapping = TextWrapping.Wrap,
-                        Foreground = new SolidColorBrush(Color.FromRgb(0xDC, 0xDC, 0xDC)),
+                        Foreground = PaletteBrush("TextFg", 0xDC, 0xDC, 0xDC),
                     },
                     new StackPanel
                     {
@@ -57,4 +57,11 @@ public static class ConfirmDialog
         await dialog.ShowDialog(owner);
         return result;
     }
+
+    // Resolves a palette brush from the app resources, falling back to the literal color
+    // so the dialog still renders if the resource is missing.
+    private static IBrush PaletteBrush(string key, byte r, byte g, byte b) =>
+        Application.Current?.TryGetResource(key, null, out object? value) == true && value is IBrush brush
+            ? brush
+            : new SolidColorBrush(Color.FromRgb(r, g, b));
 }
