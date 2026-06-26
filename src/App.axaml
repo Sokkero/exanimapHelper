@@ -29,12 +29,18 @@
             <Setter Property="CaretBrush" Value="{DynamicResource TextFg}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushColor}" />
             <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
 
         <Style Selector="ListBox">
             <Setter Property="Background" Value="{DynamicResource InputBg}" />
             <Setter Property="Foreground" Value="{DynamicResource TextFg}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushColor}" />
+        </Style>
+
+        <Style Selector="ListBoxItem">
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="6,1" />
         </Style>
 
         <!-- Flat dark button. Avalonia uses pseudo-class selectors (:pointerover,

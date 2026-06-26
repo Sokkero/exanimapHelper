@@ -88,6 +88,8 @@
             <Border BorderBrush="{StaticResource BorderBrushColor}" BorderThickness="1">
                 <ListBox x:Name="DataList" BorderThickness="0"
                          FontFamily="{StaticResource MonoFont}"
+                         SelectionChanged="DataList_SelectionChanged"
+                         KeyDown="DataList_KeyDown"
                          ScrollViewer.VerticalScrollBarVisibility="Auto" />
             </Border>
         </DockPanel>

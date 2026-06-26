@@ -20,6 +20,7 @@ public sealed class GraphRenderer
 {
     private const double Padding = 20;
     private const double PointDiameter = 5;
+    private const double SelectedDiameter = PointDiameter * 2;       // selected point, enlarged for visibility
     private const double PoiDiameter = PointDiameter * 10;
 
     private static readonly IBrush LineBrush = Brushes.SteelBlue;
@@ -27,6 +28,7 @@ public sealed class GraphRenderer
     private static readonly IBrush LatestBrush = Brushes.Firebrick;  // most recent recorded point
     private static readonly IBrush PoiBrush = Brushes.Red;           // hollow circle
     private static readonly IBrush LiveBrush = Brushes.Red;          // live position dot
+    private static readonly IBrush SelectedBrush = Brushes.LimeGreen; // item selected in the data list
 
     private readonly Canvas _canvas;
 
@@ -48,6 +50,12 @@ public sealed class GraphRenderer
         IsVisible = false,
     };
     private float? _liveX, _liveY;
+
+    // The data-list selection to highlight green: a point (IsPoi false, A = path,
+    // B = index within it) or a POI (IsPoi true, A = index). Null when nothing is
+    // selected, so "at most one kind" is structural rather than a maintained invariant.
+    private readonly record struct Selection(bool IsPoi, int A, int B);
+    private Selection? _selection;
 
     private readonly record struct Transform(
         double MinX, double MaxY, double Scale, double OffsetX, double OffsetY, double CanvasH);
@@ -160,9 +168,10 @@ public sealed class GraphRenderer
         if (allDots.Children.Count > 0)
             _canvas.Children.Add(new Avalonia.Controls.Shapes.Path { Fill = PointBrush, Data = allDots });
 
-        // POIs: hollow red circles at 10x point size.
-        foreach (TrailPoint p in pois)
+        // POIs: hollow red circles at 10x point size; the selected one turns green.
+        for (int i = 0; i < pois.Count; i++)
         {
+            TrailPoint p = pois[i];
             if (!TrailPoint.IsFinite(p))
                 continue;
             Point sp = ToScreen(p);
@@ -170,7 +179,7 @@ public sealed class GraphRenderer
             {
                 Width = PoiDiameter,
                 Height = PoiDiameter,
-                Stroke = PoiBrush,
+                Stroke = _selection is { IsPoi: true, A: var selPoi } && selPoi == i ? SelectedBrush : PoiBrush,
                 StrokeThickness = 2,
                 Fill = null,
             };
@@ -183,6 +192,16 @@ public sealed class GraphRenderer
         TrailPoint? latest = FindLatest(paths);
         if (latest is TrailPoint lp && TrailPoint.IsFinite(lp))
             AddDot(ToScreen(lp), LatestBrush);
+
+        // The point selected in the data list is drawn green and enlarged, on top.
+        if (_selection is { IsPoi: false, A: var selPath, B: var selPoint }
+            && selPath >= 0 && selPath < paths.Count
+            && selPoint >= 0 && selPoint < paths[selPath].Count)
+        {
+            TrailPoint sel = paths[selPath][selPoint];
+            if (TrailPoint.IsFinite(sel))
+                AddDot(ToScreen(sel), SelectedBrush, SelectedDiameter);
+        }
 
         // Live dot stays on top and is repositioned from the cached transform.
         _canvas.Children.Add(_liveDot);
@@ -199,6 +218,29 @@ public sealed class GraphRenderer
 
     /// <summary>Shows/hides the live dot. Export hides it so it never lands in the PNG.</summary>
     public void SetLiveMarkerVisible(bool visible) => _liveDot.IsVisible = visible;
+
+    /// <summary>Highlights a recorded point (by path and index within it) in green.</summary>
+    public void SelectPoint(int pathIndex, int pointIndex)
+    {
+        _selection = new Selection(false, pathIndex, pointIndex);
+        Render(_paths, _pois);
+    }
+
+    /// <summary>Highlights a POI (by index) in green.</summary>
+    public void SelectPoi(int poiIndex)
+    {
+        _selection = new Selection(true, poiIndex, 0);
+        Render(_paths, _pois);
+    }
+
+    /// <summary>Clears any data-list selection highlight.</summary>
+    public void ClearSelection()
+    {
+        if (_selection is null)
+            return;
+        _selection = null;
+        Render(_paths, _pois);
+    }
 
     private static TrailPoint? FindLatest(IReadOnlyList<IReadOnlyList<TrailPoint>> paths)
     {
@@ -264,11 +306,11 @@ public sealed class GraphRenderer
         _liveDot.IsVisible = true;
     }
 
-    private void AddDot(Point p, IBrush brush)
+    private void AddDot(Point p, IBrush brush, double diameter = PointDiameter)
     {
-        var dot = new Ellipse { Width = PointDiameter, Height = PointDiameter, Fill = brush };
-        Canvas.SetLeft(dot, p.X - PointDiameter / 2);
-        Canvas.SetTop(dot, p.Y - PointDiameter / 2);
+        var dot = new Ellipse { Width = diameter, Height = diameter, Fill = brush };
+        Canvas.SetLeft(dot, p.X - diameter / 2);
+        Canvas.SetTop(dot, p.Y - diameter / 2);
         _canvas.Children.Add(dot);
     }
 }

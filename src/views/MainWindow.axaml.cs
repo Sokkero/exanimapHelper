@@ -1,12 +1,14 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 
 namespace ExanimapHelper;
 
@@ -38,15 +40,29 @@ public partial class MainWindow : Window
     private readonly IHotkeyService _hotkey;
     private readonly AppSettings _settings = SettingsService.Load();
 
-    // Flat, display-only view of the recorded data (point rows, path separators and
-    // POI rows). Kept in sync incrementally so scroll-to-latest keeps working.
-    private readonly ObservableCollection<string> _display = new();
+    // Flat view of the recorded data (point rows, path separators and POI rows). Each
+    // row carries both its display text and what it points at in the model, so a list
+    // selection can be highlighted on the graph without a second parallel collection.
+    // Kept in sync incrementally so scroll-to-latest keeps working.
+    private enum RowKind { Point, Poi, Separator }
+    private sealed record DisplayRow(RowKind Kind, int A, int B, string Text)
+    {
+        public static DisplayRow Point(int path, int index, string text) => new(RowKind.Point, path, index, text);
+        public static DisplayRow Poi(int index, string text) => new(RowKind.Poi, index, 0, text);
+        public static DisplayRow Separator(string text) => new(RowKind.Separator, 0, 0, text);
+        public override string ToString() => Text;
+    }
+    private readonly ObservableCollection<DisplayRow> _display = new();
 
     private RecordingState _state = RecordingState.Idle;
     private bool IsRecording => _state == RecordingState.Recording;
 
     // Most recent live reading, used to place POIs and the live marker.
     private float? _lastLiveX, _lastLiveY;
+
+    // True when a press landed on the row that was already selected, so the matching
+    // release toggles it off. Captured in the tunnel phase, before the ListBox reacts.
+    private bool _pressedSelectedRow;
 
     public MainWindow()
     {
@@ -63,6 +79,11 @@ public partial class MainWindow : Window
         YAddressBox.Text = _settings.YAddress;
         IntervalBox.Text = _settings.IntervalMs.ToString(CultureInfo.InvariantCulture);
         DataList.ItemsSource = _display;
+
+        // Toggle-off-on-reclick: note the prior selection in the tunnel phase (before
+        // the ListBox processes the press), then clear it on release if unchanged.
+        DataList.AddHandler(PointerPressedEvent, DataList_PointerPressed, RoutingStrategies.Tunnel);
+        DataList.AddHandler(PointerReleasedEvent, DataList_PointerReleased, RoutingStrategies.Bubble);
 
         TrySetIcon();
     }
@@ -112,6 +133,78 @@ public partial class MainWindow : Window
         base.OnClosed(e);
     }
 
+    // Highlights the selected row's point/POI green on the graph. Separators and an
+    // empty selection clear the highlight.
+    private void DataList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        int i = DataList.SelectedIndex;
+        if (i < 0 || i >= _display.Count)
+        {
+            _renderer.ClearSelection();
+            return;
+        }
+
+        DisplayRow row = _display[i];
+        switch (row.Kind)
+        {
+            case RowKind.Point:
+                _renderer.SelectPoint(row.A, row.B);
+                break;
+            case RowKind.Poi:
+                _renderer.SelectPoi(row.A);
+                break;
+            default:
+                _renderer.ClearSelection();
+                break;
+        }
+    }
+
+    // Backspace deletes the selected point or POI. Removing a path point joins its
+    // neighbours (the polyline simply skips the gap on the next render).
+    private void DataList_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Back)
+            return;
+
+        int i = DataList.SelectedIndex;
+        if (i < 0 || i >= _display.Count)
+            return;
+
+        DisplayRow row = _display[i];
+        switch (row.Kind)
+        {
+            case RowKind.Point:
+                _trail.RemovePoint(row.A, row.B);
+                break;
+            case RowKind.Poi:
+                _trail.RemovePoi(row.A);
+                break;
+            default:
+                return; // separator: nothing to delete
+        }
+        e.Handled = true;
+
+        // Rebuild from the model: clears the selection/highlight and re-indexes the rows.
+        RebuildDisplay();
+        _renderer.Render(_trail.Paths, _trail.Pois);
+        SetDataActionsEnabled(_trail.HasData);
+    }
+
+    private void DataList_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        ListBoxItem? item = (e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true);
+        _pressedSelectedRow = item is not null
+            && DataList.SelectedIndex >= 0
+            && DataList.IndexFromContainer(item) == DataList.SelectedIndex;
+    }
+
+    private void DataList_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_pressedSelectedRow)
+            DataList.SelectedIndex = -1;
+        _pressedSelectedRow = false;
+    }
+
     private void StartStopButton_Click(object? sender, RoutedEventArgs e) => ToggleRecording();
 
     // Drives the Start → Stop → Resume cycle. Both the button and F8 call this.
@@ -159,6 +252,7 @@ public partial class MainWindow : Window
     {
         _trail.Clear();
         _display.Clear();
+        _renderer.ClearSelection();
 
         // While recording, keep going on a fresh path so Add still has a target.
         if (IsRecording)
@@ -186,7 +280,7 @@ public partial class MainWindow : Window
 
         // Resuming with existing data starts a visually and structurally separate path.
         if (_trail.HasData)
-            _display.Add(NewPathRow);
+            _display.Add(DisplayRow.Separator(NewPathRow));
 
         _trail.StartNewPath();
 
@@ -260,7 +354,7 @@ public partial class MainWindow : Window
     private void CommitPoi(float x, float y)
     {
         _trail.AddPoi(x, y);
-        _display.Add($"{PoiPrefix}{new TrailPoint(x, y)}");
+        _display.Add(DisplayRow.Poi(_trail.Pois.Count - 1, $"{PoiPrefix}{new TrailPoint(x, y)}"));
         DataList.ScrollIntoView(_display[^1]);
         _renderer.Render(_trail.Paths, _trail.Pois);
         SetDataActionsEnabled(true);
@@ -362,7 +456,8 @@ public partial class MainWindow : Window
         // Only points far enough from the last one are recorded.
         if (_trail.Add(x.Value, y.Value))
         {
-            _display.Add(new TrailPoint(x.Value, y.Value).ToString());
+            _display.Add(DisplayRow.Point(_trail.Paths.Count - 1, _trail.Paths[^1].Count - 1,
+                new TrailPoint(x.Value, y.Value).ToString()));
             DataList.ScrollIntoView(_display[^1]);
             SetDataActionsEnabled(true);
             _renderer.Render(_trail.Paths, _trail.Pois);
@@ -494,20 +589,23 @@ public partial class MainWindow : Window
     private void RebuildDisplay()
     {
         _display.Clear();
+        _renderer.ClearSelection();
+
         bool firstPath = true;
-        foreach (IReadOnlyList<TrailPoint> path in _trail.Paths)
+        for (int pi = 0; pi < _trail.Paths.Count; pi++)
         {
+            IReadOnlyList<TrailPoint> path = _trail.Paths[pi];
             if (path.Count == 0)
                 continue;
             if (!firstPath)
-                _display.Add(NewPathRow);
+                _display.Add(DisplayRow.Separator(NewPathRow));
             firstPath = false;
-            foreach (TrailPoint p in path)
-                _display.Add(p.ToString());
+            for (int qi = 0; qi < path.Count; qi++)
+                _display.Add(DisplayRow.Point(pi, qi, path[qi].ToString()));
         }
 
-        foreach (TrailPoint p in _trail.Pois)
-            _display.Add($"{PoiPrefix}{p}");
+        for (int k = 0; k < _trail.Pois.Count; k++)
+            _display.Add(DisplayRow.Poi(k, $"{PoiPrefix}{_trail.Pois[k]}"));
     }
 
     private static bool IsSuspicious(float value) =>
